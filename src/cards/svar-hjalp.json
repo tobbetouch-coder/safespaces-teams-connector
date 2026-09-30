@@ -1,0 +1,12 @@
+{
+  "$schema": "http://adaptivecards.io/schemas/adaptive-card.json",
+  "type": "AdaptiveCard", "version": "1.5",
+  "body": [
+    { "type": "Container", "style": "attention", "bleed": true, "items": [
+      { "type": "TextBlock", "text": "Hjälp är begärd", "weight": "Bolder", "size": "Medium", "color": "Light" }
+    ]},
+    { "type": "TextBlock", "text": "Säkerhetsansvarig ser att du behöver hjälp. Stanna där du är om du kan.", "wrap": true },
+    { "type": "FactSet", "facts": [ { "title": "Ditt svar", "value": "Behöver hjälp {{svarstid}}" } ] },
+    { "type": "TextBlock", "text": "Larm {{correlationId}}", "size": "Small", "isSubtle": true }
+  ]
+}

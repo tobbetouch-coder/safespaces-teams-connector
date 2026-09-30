@@ -3,7 +3,8 @@
 const fs = require("node:fs");
 const path = require("node:path");
 
-const MALLAR = ["larm", "aktivt", "forlarm", "avblast", "ovning", "valkomst", "placeholder"];
+const MALLAR = ["larm", "aktivt", "forlarm", "avblast", "ovning", "valkomst", "placeholder",
+  "larm-mottagare", "svar-sakerhet", "svar-hjalp", "lageskort"];
 const cache = new Map();
 
 function mall(namn) {
@@ -13,7 +14,7 @@ function mall(namn) {
 }
 
 // Rubrikbanden följer kortspecifikationen: BRANDLARM, FÖRLARM, FARAN ÖVER.
-const RUBRIKBAND = { larm: "BRANDLARM", aktivt: "BRANDLARM", forlarm: "FÖRLARM", avblast: "FARAN ÖVER", ovning: "ÖVNING" };
+const RUBRIKBAND = { larm: "BRANDLARM", aktivt: "BRANDLARM", "larm-mottagare": "BRANDLARM", forlarm: "FÖRLARM", avblast: "FARAN ÖVER", ovning: "ÖVNING", lageskort: "MUSTERING" };
 
 const KNAPP = {
   confirm: { titel: "Bekräfta", stil: "positive" },
@@ -47,6 +48,7 @@ function fyll(nod, data) {
 function rendera(mallNamn, data, tillåtnaActions = []) {
   const kort = fyll(mall(mallNamn), { ...data, rubrikband: data.rubrikband ?? RUBRIKBAND[mallNamn] ?? "" });
   // Terminalkort och välkomst bär aldrig knappar.
+  // Mottagarkortet bär sina musteringsknappar i mallen och ska inte få rollknappar på.
   const knappbara = ["larm", "aktivt", "forlarm", "ovning"].includes(mallNamn);
   if (knappbara && tillåtnaActions.length) {
     kort.actions = tillåtnaActions.map((action) => ({
@@ -75,3 +77,26 @@ function statuskort(rubrik, text, data = {}) {
 }
 
 module.exports = { rendera, väljMall, statuskort, RUBRIKBAND, MALLAR };
+
+/**
+ * Lägeskortet i kanalen: totaler, hjälplista och knappar. Avblås visas alltid —
+ * rollgrinden slår till vid trycket (steg 1 är UX, steg 2 är Site Connect).
+ */
+function lägeskort(data, musteringUrl) {
+  const kort = rendera("lageskort", {
+    ...data,
+    bandstil: data.antalHjalp > 0 ? "attention" : "good",
+    hjalplista: data.hjalplista || "Ingen har begärt hjälp.",
+    uppdaterat: new Date().toISOString().slice(11, 16),
+  }, []);
+  kort.actions = [
+    { type: "Action.Execute", title: "Avblås", style: "destructive", verb: "standdown",
+      data: { correlationId: data.correlationId, zone: data.zon, site: data.site, action: "standdown" } },
+    { type: "Action.Execute", title: "Uppdatera läget", verb: "muster.refresh",
+      data: { correlationId: data.correlationId, zone: data.zon, site: data.site, action: "muster.refresh" } },
+  ];
+  if (musteringUrl) kort.actions.push({ type: "Action.OpenUrl", title: "Öppna mustering", url: musteringUrl });
+  return kort;
+}
+
+module.exports.lägeskort = lägeskort;

@@ -1,0 +1,22 @@
+{
+  "$schema": "http://adaptivecards.io/schemas/adaptive-card.json",
+  "type": "AdaptiveCard", "version": "1.5",
+  "body": [
+    { "type": "Container", "style": "attention", "bleed": true, "items": [
+      { "type": "TextBlock", "text": "{{rubrikband}}", "weight": "Bolder", "size": "Large", "color": "Light" },
+      { "type": "TextBlock", "text": "{{ingress}}", "wrap": true, "color": "Light" }
+    ]},
+    { "type": "FactSet", "facts": [
+      { "title": "Byggnad", "value": "{{plats}}" },
+      { "title": "Zon", "value": "{{zon}}" },
+      { "title": "Larm", "value": "{{klockslag}}" }
+    ]},
+    { "type": "TextBlock", "text": "{{instruktion}}", "wrap": true },
+    { "type": "TextBlock", "text": "Larm {{correlationId}} · {{status}}", "size": "Small", "isSubtle": true, "wrap": true }
+  ],
+  "actions": [
+    { "type": "Action.Execute", "title": "Jag är i säkerhet", "style": "positive", "verb": "muster.safe", "data": { "correlationId": "{{correlationId}}", "zone": "{{zon}}", "site": "{{site}}", "action": "muster.safe" } },
+    { "type": "Action.Execute", "title": "Jag behöver hjälp", "style": "destructive", "verb": "muster.help", "data": { "correlationId": "{{correlationId}}", "zone": "{{zon}}", "site": "{{site}}", "action": "muster.help" } },
+    { "type": "Action.OpenUrl", "title": "Visa utrymningskarta", "url": "{{kartaUrl}}" }
+  ]
+}

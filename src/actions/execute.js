@@ -1,16 +1,16 @@
-// C4: knapptrycket. Tenant-verify, rollgrind och pending-kort. Aldrig terminalläge här —
-// utfallet ägs av Site Connect och kommer tillbaka som ett event via presentEvent.
-const { CardFactory } = require("botbuilder");
+// C4, reviderad. Två sorters tryck:
+//   musteringssvar (muster.safe, muster.help, muster.refresh) — alla i zonen, ingen rollgrind
+//   kommandon (confirm, dismiss, standdown) — rollgate:ade och skickas till bridgen
+// Ett tryck sätter aldrig terminalläge. Faran över kommer via clear-eventet.
 const { rollFörPerson, fårGöra } = require("../store/config");
 const { emitCommand } = require("../bridge/stub");
-const { statuskort } = require("../cards/render");
+const { statuskort, rendera } = require("../cards/render");
+const { registrera } = require("../store/mustering");
+const { uppdateraLägeskort } = require("../present/mustering");
 
 const COID = process.env.MicrosoftAppTenantId;
-const ETIKETT = {
-  confirm: "Bekräftelse", dismiss: "Avfärdande", standdown: "Avblåsning",
-};
+const ETIKETT = { confirm: "Bekräftelse", dismiss: "Avfärdande", standdown: "Avblåsning" };
 
-/** Svar som ersätter kortet i stället för att posta en bubbla. */
 const kortsvar = (kort) => ({
   statusCode: 200,
   type: "application/vnd.microsoft.card.adaptive",
@@ -21,7 +21,7 @@ async function hanteraExecute(context) {
   const data = context.activity.value?.action?.data ?? context.activity.value?.data ?? {};
   const { correlationId, zone, site, action } = data;
 
-  // 1. Tenant-verify utöver adapterns JWT-kontroll.
+  // Tenant-verify utöver adapterns JWT-kontroll. Gäller båda sorternas tryck.
   const tenant = context.activity.channelData?.tenant?.id;
   if (COID && tenant && tenant !== COID) {
     console.warn(`Action.Execute från främmande tenant ${tenant}, avvisat`);
@@ -29,9 +29,27 @@ async function hanteraExecute(context) {
   }
 
   const aad = context.activity.from?.aadObjectId;
-  const roll = aad ? await rollFörPerson(aad) : null;
+  const namn = context.activity.from?.name ?? "";
 
-  // 3. Default deny: okänd identitet eller roll utan rätt till åtgärden.
+  // --- Musteringssvar: öppna för alla i zonen ---
+  if (action === "muster.safe" || action === "muster.help") {
+    const status = action === "muster.safe" ? "safe" : "help";
+    const rad = await registrera(correlationId, aad, status, namn);
+    console.log(`mustering ${status} ${aad} för ${correlationId}`);
+    // Lägeskortet i kanalen ritas om direkt, så ledningen ser svaret.
+    uppdateraLägeskort(correlationId).catch((e) => console.error("lägeskortet kunde inte uppdateras", e));
+    const svarstid = rad.tid.slice(11, 16);
+    return kortsvar(rendera(status === "safe" ? "svar-sakerhet" : "svar-hjalp", { correlationId, svarstid }, []));
+  }
+
+  if (action === "muster.refresh") {
+    const res = await uppdateraLägeskort(correlationId);
+    if (res.uppdaterat) return { statusCode: 200, type: "application/vnd.microsoft.activity.message", value: "Läget uppdaterat." };
+    return kortsvar(statuskort("Kunde inte uppdatera", `Läget gick inte att hämta: ${res.skäl}.`, data));
+  }
+
+  // --- Kommandon: rollgate:ade ---
+  const roll = aad ? await rollFörPerson(aad) : null;
   if (!roll || !(await fårGöra(roll, action))) {
     console.warn(`nekad: aad=${aad ?? "okänd"} roll=${roll ?? "okänd"} action=${action}`);
     return kortsvar(statuskort(
@@ -42,7 +60,6 @@ async function hanteraExecute(context) {
       data));
   }
 
-  // Auktoriserad: skicka kommandot och sätt kortet i väntläge.
   try {
     await emitCommand({ tenant: "COID", site, zone, correlationId, actorEntraId: aad, action });
   } catch (err) {

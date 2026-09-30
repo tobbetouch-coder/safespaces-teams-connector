@@ -7,6 +7,9 @@ const { presentEvent } = require("../present/presentEvent");
 const { rollFörPerson } = require("../store/config");
 const { rendera } = require("../cards/render");
 const { inspelade } = require("../bridge/stub");
+const { uppdateraLägeskort } = require("../present/mustering");
+const { läge } = require("../store/mustering");
+const { allaPersoner } = require("../store/config");
 
 // Simulatorn: ett correlationId per körning, så att in-place-uppdateringen syns.
 const SITE = process.env.DEMO_SITE ?? "hus-3-uppsala";
@@ -22,6 +25,15 @@ class SafeSpacesBot extends TeamsActivityHandler {
 
       if (text.startsWith("simulera")) await this.simulera(context, text);
       else if (text === "larmtest") await this.larmtest(context);
+      else if (text === "läge" || text === "lage") {
+        const korr = this.korrelation;
+        if (!korr) await context.sendActivity("Inget pågående larm i simulatorn. Kör: simulera brandlarm");
+        else {
+          const l = await läge(korr, (await allaPersoner()).length);
+          await uppdateraLägeskort(korr);
+          await context.sendActivity(`Läge för ${korr}: ${l.säkra} i säkerhet, ${l.hjälp.length} behöver hjälp, ${l.utanSvar} utan svar. Lägeskortet i kanalen är uppdaterat.`);
+        }
+      }
       else if (text === "vem är jag" || text === "vem ar jag") {
         const roll = await rollFörPerson(context.activity.from?.aadObjectId);
         await context.sendActivity(roll ? `Du är ${roll} i behörighetslistan.` : "Du finns inte i behörighetslistan (default deny).");
@@ -90,13 +102,16 @@ class SafeSpacesBot extends TeamsActivityHandler {
     if (del === "nytt") { this.korrelation = `sim-${Date.now()}`; await context.sendActivity(`Nytt correlationId: ${this.korrelation}`); return; }
 
     const varianter = {
+      brandlarm: { scenario: "Utrymning", severity: "active", test: false,
+        ingress: "Lämna byggnaden nu.",
+        instruktion: "Utrym via närmaste utrymningsväg och gå till återsamlingsplatsen. Svara nedan när du är i säkerhet." },
       forlarm: { scenario: "Förlarm och bekräftelse", severity: "prealarm", test: false, instruktion: "Kamerazonen har gett förlarm. Bekräfta om det är skarpt, avfärda om det är falsklarm." },
       trigger: { scenario: "Utrymning", severity: "active", test: false, instruktion: "Lämna byggnaden via närmaste utrymningsväg." },
       clear: { scenario: "Faran över", severity: "cleared", test: false, rollSomAgerade: "Säkerhetsansvarig", larmintervall: `${bas.occurredAt.slice(11, 16)}` },
       ovning: { scenario: "Övning", severity: "active", test: true, instruktion: "Detta är en övning. Följ ordinarie utrymningsrutin." },
     };
     const v = varianter[del];
-    if (!v) { await context.sendActivity("Använd: simulera forlarm | trigger | clear | ovning | status | nytt"); return; }
+    if (!v) { await context.sendActivity("Använd: simulera brandlarm | forlarm | trigger | clear | ovning | status | nytt"); return; }
 
     const res = await presentEvent({ ...bas, ...v });
     await context.sendActivity(`Simulerat ${del} för ${korr}: mall ${res.mall}, ${res.nya} nya kort och ${res.uppdaterade} uppdaterade.`);

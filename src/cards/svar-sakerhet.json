@@ -1,0 +1,10 @@
+{
+  "$schema": "http://adaptivecards.io/schemas/adaptive-card.json",
+  "type": "AdaptiveCard", "version": "1.5",
+  "body": [
+    { "type": "TextBlock", "text": "Tack. Säkerhetsansvarig ser att du är i säkerhet.", "wrap": true, "weight": "Bolder" },
+    { "type": "TextBlock", "text": "Du får ett nytt meddelande när faran är över.", "wrap": true },
+    { "type": "FactSet", "facts": [ { "title": "Ditt svar", "value": "I säkerhet {{svarstid}}" } ] },
+    { "type": "TextBlock", "text": "Larm {{correlationId}}", "size": "Small", "isSubtle": true }
+  ]
+}

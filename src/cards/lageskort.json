@@ -1,0 +1,22 @@
+{
+  "$schema": "http://adaptivecards.io/schemas/adaptive-card.json",
+  "type": "AdaptiveCard", "version": "1.5",
+  "body": [
+    { "type": "Container", "style": "{{bandstil}}", "bleed": true, "items": [
+      { "type": "TextBlock", "text": "{{rubrikband}} · {{plats}}", "weight": "Bolder", "size": "Large" }
+    ]},
+    { "type": "ColumnSet", "columns": [
+      { "type": "Column", "width": "stretch", "items": [
+        { "type": "TextBlock", "text": "I säkerhet", "isSubtle": true, "spacing": "None" },
+        { "type": "TextBlock", "text": "{{antalSakra}}", "size": "ExtraLarge", "weight": "Bolder", "color": "Good", "spacing": "None" } ] },
+      { "type": "Column", "width": "stretch", "items": [
+        { "type": "TextBlock", "text": "Behöver hjälp", "isSubtle": true, "spacing": "None" },
+        { "type": "TextBlock", "text": "{{antalHjalp}}", "size": "ExtraLarge", "weight": "Bolder", "color": "Attention", "spacing": "None" } ] },
+      { "type": "Column", "width": "stretch", "items": [
+        { "type": "TextBlock", "text": "Inget svar", "isSubtle": true, "spacing": "None" },
+        { "type": "TextBlock", "text": "{{antalUtanSvar}}", "size": "ExtraLarge", "weight": "Bolder", "spacing": "None" } ] }
+    ]},
+    { "type": "TextBlock", "text": "{{hjalplista}}", "wrap": true, "color": "Attention" },
+    { "type": "TextBlock", "text": "Uppdaterat {{uppdaterat}} · Larm {{correlationId}}", "size": "Small", "isSubtle": true, "wrap": true }
+  ]
+}
