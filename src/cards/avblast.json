@@ -1,0 +1,17 @@
+{
+  "$schema": "http://adaptivecards.io/schemas/adaptive-card.json",
+  "type": "AdaptiveCard", "version": "1.5",
+  "body": [
+    { "type": "Container", "style": "good", "bleed": true, "items": [
+      { "type": "TextBlock", "text": "FARAN ÖVER", "weight": "Bolder", "size": "Large" },
+      { "type": "TextBlock", "text": "Du kan återgå till byggnaden", "wrap": true }
+    ]},
+    { "type": "FactSet", "facts": [
+      { "title": "Byggnad", "value": "{{plats}}" },
+      { "title": "Larm", "value": "{{larmintervall}}" },
+      { "title": "Avblåst av", "value": "{{rollSomAgerade}}" }
+    ]},
+    { "type": "TextBlock", "text": "Frågor om utrymningen tar du med din säkerhetsansvarige.", "wrap": true, "isSubtle": true },
+    { "type": "TextBlock", "text": "Larm {{correlationId}} · Avslutat", "size": "Small", "isSubtle": true, "wrap": true }
+  ]
+}

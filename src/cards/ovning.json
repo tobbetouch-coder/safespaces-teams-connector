@@ -1,0 +1,18 @@
+{
+  "$schema": "http://adaptivecards.io/schemas/adaptive-card.json",
+  "type": "AdaptiveCard", "version": "1.5",
+  "body": [
+    { "type": "Container", "style": "accent", "bleed": true, "items": [
+      { "type": "TextBlock", "text": "ÖVNING", "weight": "Bolder", "size": "ExtraLarge", "horizontalAlignment": "Center" },
+      { "type": "TextBlock", "text": "Detta är en övning. Inget skarpt larm.", "horizontalAlignment": "Center", "wrap": true }
+    ]},
+    { "type": "TextBlock", "text": "{{rubrikband}} · {{scenario}}", "weight": "Bolder", "size": "Medium", "wrap": true },
+    { "type": "FactSet", "facts": [
+      { "title": "Plats", "value": "{{plats}}" },
+      { "title": "Zon", "value": "{{zon}}" },
+      { "title": "Klockslag", "value": "{{klockslag}}" }
+    ]},
+    { "type": "TextBlock", "text": "{{instruktion}}", "wrap": true },
+    { "type": "TextBlock", "text": "Larm {{correlationId}} · {{status}}", "size": "Small", "isSubtle": true, "wrap": true }
+  ]
+}

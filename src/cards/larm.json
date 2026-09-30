@@ -1,0 +1,17 @@
+{
+  "$schema": "http://adaptivecards.io/schemas/adaptive-card.json",
+  "type": "AdaptiveCard", "version": "1.5",
+  "body": [
+    { "type": "Container", "style": "attention", "bleed": true, "items": [
+      { "type": "TextBlock", "text": "{{rubrikband}}", "weight": "Bolder", "size": "Large", "color": "Light" }
+    ]},
+    { "type": "TextBlock", "text": "{{scenario}}", "weight": "Bolder", "size": "Medium", "wrap": true },
+    { "type": "FactSet", "facts": [
+      { "title": "Plats", "value": "{{plats}}" },
+      { "title": "Zon", "value": "{{zon}}" },
+      { "title": "Klockslag", "value": "{{klockslag}}" }
+    ]},
+    { "type": "TextBlock", "text": "{{instruktion}}", "wrap": true },
+    { "type": "TextBlock", "text": "Larm {{correlationId}} · {{status}}", "size": "Small", "isSubtle": true, "wrap": true }
+  ]
+}

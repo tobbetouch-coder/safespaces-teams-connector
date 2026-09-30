@@ -1,0 +1,9 @@
+{
+  "$schema": "http://adaptivecards.io/schemas/adaptive-card.json",
+  "type": "AdaptiveCard", "version": "1.5",
+  "body": [
+    { "type": "TextBlock", "text": "WIAAS Safe Spaces", "weight": "Bolder", "size": "Medium" },
+    { "type": "TextBlock", "text": "Du får larm och övningar här i Teams. Knapparna du ser styrs av din roll.", "wrap": true },
+    { "type": "FactSet", "facts": [ { "title": "Din roll", "value": "{{rollEtikett}}" } ] }
+  ]
+}
