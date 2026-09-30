@@ -7,7 +7,7 @@ const { adapter } = require("../bot/adapter");
 const { routing, rollerSomFår, personerIRoller, allaPersoner } = require("../store/config");
 const { getByAad, getByChannel } = require("../store/refs");
 const { hämtaFörKorrelation, spara, sparaEvent } = require("../store/cards");
-const { läge } = require("../store/mustering");
+const { läge, säkraLarm } = require("../store/mustering");
 const { rendera, väljMall, lägeskort } = require("../cards/render");
 const { medBackoff } = require("../util/retry");
 
@@ -25,6 +25,8 @@ async function presentEvent(event) {
   const mallNamn = väljMall(event);
   const rutt = await routing("COID", event.site);
   await sparaEvent(event.correlationId, event);
+  // Larmets huvudrad i Supabase: Teams och Cloud-skivan delar källa.
+  try { await säkraLarm(event); } catch (e) { console.error("kunde inte skriva larmet till Supabase", e.message); }
 
   const data = {
     correlationId: event.correlationId,

@@ -34,7 +34,7 @@ async function hanteraExecute(context) {
   // --- Musteringssvar: öppna för alla i zonen ---
   if (action === "muster.safe" || action === "muster.help") {
     const status = action === "muster.safe" ? "safe" : "help";
-    const rad = await registrera(correlationId, aad, status, namn);
+    const rad = await registrera(correlationId, aad, status, namn, zone);
     console.log(`mustering ${status} ${aad} för ${correlationId}`);
     // Lägeskortet i kanalen ritas om direkt, så ledningen ser svaret.
     uppdateraLägeskort(correlationId).catch((e) => console.error("lägeskortet kunde inte uppdateras", e));
