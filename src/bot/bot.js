@@ -34,6 +34,7 @@ class SafeSpacesBot extends TeamsActivityHandler {
           await context.sendActivity(`Läge för ${korr}: ${l.säkra} i säkerhet, ${l.hjälp.length} behöver hjälp, ${l.utanSvar} utan svar. Lägeskortet i kanalen är uppdaterat.`);
         }
       }
+      else if (text === "välkomst" || text === "valkomst") await this.visaVälkomst(context);
       else if (text === "vem är jag" || text === "vem ar jag") {
         const roll = await rollFörPerson(context.activity.from?.aadObjectId);
         await context.sendActivity(roll ? `Du är ${roll} i behörighetslistan.` : "Du finns inte i behörighetslistan (default deny).");
@@ -76,6 +77,15 @@ class SafeSpacesBot extends TeamsActivityHandler {
       await sendCard(TurnContext.getConversationReference(context.activity), kort);
       await markWelcomed(rad.partitionKey, rad.rowKey);
     } catch (err) { console.error("välkomstkortet gick inte fram", err); }
+  }
+
+  /** Välkomstkortet på begäran. välkomnaEnGång är en engångsspärr; det här är demovägen. */
+  async visaVälkomst(context) {
+    const rutt = await routing("COID", SITE);
+    const aad = context.activity.from?.aadObjectId;
+    const p = aad ? await personFörAad(aad) : null;
+    const data = byggData({ correlationId: "valkomst", site: SITE, zone: rutt?.zonNyckel ?? ZON }, rutt, null);
+    await context.sendActivity({ attachments: [CardFactory.adaptiveCard(rendera("valkomst", { ...data, zon: p?.zon || data.zon }, []))] });
   }
 
   async larmtest(context) {
