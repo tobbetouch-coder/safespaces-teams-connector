@@ -1,5 +1,7 @@
 // Renderar en mall med data och lägger på de knappar mottagarens roll faktiskt får använda.
 // Knappsynligheten är steg 1 i default deny: syns inte knappen kan den inte tryckas.
+// Texten är låst mot BO-016:s manus. [V] = verifierad mock-up-text, [F] = förslag som
+// gäller tills manuset låses: behöver-hjälp-varianten, övningen och förlarmet.
 const fs = require("node:fs");
 const path = require("node:path");
 
@@ -13,8 +15,8 @@ function mall(namn) {
   return JSON.parse(cache.get(namn));
 }
 
-// Rubrikbanden följer kortspecifikationen: BRANDLARM, FÖRLARM, FARAN ÖVER.
-const RUBRIKBAND = { larm: "BRANDLARM", aktivt: "BRANDLARM", "larm-mottagare": "BRANDLARM", forlarm: "FÖRLARM", avblast: "FARAN ÖVER", ovning: "ÖVNING", lageskort: "MUSTERING" };
+// Behålls för statuskorten och bakåtkompatibilitet; korttexten bor numera i mallarna.
+const RUBRIKBAND = { larm: "BRANDLARM", aktivt: "BRANDLARM", "larm-mottagare": "BRANDLARM", forlarm: "FÖRLARM", avblast: "FARAN ÖVER", ovning: "ÖVNING", lageskort: "UTRYMNING PÅGÅR" };
 
 const KNAPP = {
   confirm: { titel: "Bekräfta", stil: "positive" },
@@ -41,22 +43,41 @@ function fyll(nod, data) {
 }
 
 /**
+ * Tar bort faktarader och textblock som blev tomma när data saknades. Utan det
+ * visar kanalens Faran över-kort en tom "Ditt svar"-rad, och ett larm utan källa
+ * får en naken faktarubrik.
+ */
+function städa(nod) {
+  if (Array.isArray(nod)) return nod.map(städa).filter((n) => n !== null);
+  if (!nod || typeof nod !== "object") return nod;
+  if (nod.type === "TextBlock" && !String(nod.text ?? "").trim()) return null;
+  if (nod.type === "FactSet") {
+    const facts = (nod.facts ?? []).filter((f) => String(f.value ?? "").trim());
+    return facts.length ? { ...nod, facts } : null;
+  }
+  const ut = Object.fromEntries(Object.entries(nod).map(([k, v]) => [k, städa(v)]));
+  // En tom container med id är en plats som koden fyller efteråt (hjälplistan) — den behålls.
+  if (ut.type === "Container" && Array.isArray(ut.items) && !ut.items.length && !ut.id) return null;
+  return ut;
+}
+
+/**
  * @param {string} mallNamn
  * @param {object} data fälten som mallen binder mot
  * @param {string[]} tillåtnaActions åtgärder mottagarens roll får utföra
  */
 function rendera(mallNamn, data, tillåtnaActions = []) {
-  const kort = fyll(mall(mallNamn), { ...data, rubrikband: data.rubrikband ?? RUBRIKBAND[mallNamn] ?? "" });
-  // Terminalkort och välkomst bär aldrig knappar.
-  // Mottagarkortet bär sina musteringsknappar i mallen och ska inte få rollknappar på.
-  const knappbara = ["larm", "aktivt", "forlarm", "ovning"].includes(mallNamn);
+  const kort = städa(fyll(mall(mallNamn), { ...data, rubrikband: data.rubrikband ?? RUBRIKBAND[mallNamn] ?? "" }));
+  // Terminalkort och välkomst bär aldrig rollknappar.
+  // Mottagarkortet och övningen bär sina musteringsknappar i mallen.
+  const knappbara = ["larm", "aktivt", "forlarm"].includes(mallNamn);
   if (knappbara && tillåtnaActions.length) {
     kort.actions = tillåtnaActions.map((action) => ({
       type: "Action.Execute",
       title: KNAPP[action].titel,
       style: KNAPP[action].stil,
       verb: action,
-      data: { correlationId: data.correlationId, zone: data.zon, site: data.site, action },
+      data: { correlationId: data.correlationId, zone: data.zonNyckel ?? data.zon, site: data.site, action },
     }));
   }
   return kort;
@@ -71,32 +92,58 @@ function statuskort(rubrik, text, data = {}) {
     body: [
       { type: "TextBlock", text: rubrik, weight: "Bolder", size: "Medium", wrap: true },
       { type: "TextBlock", text, wrap: true },
-      ...(data.correlationId ? [{ type: "TextBlock", text: `Larm ${data.correlationId}`, size: "Small", isSubtle: true }] : []),
+      ...(data.larmId || data.correlationId ? [{ type: "TextBlock", text: `Larm ${data.larmId ?? data.correlationId}`, size: "Small", isSubtle: true }] : []),
     ],
   };
 }
 
-module.exports = { rendera, väljMall, statuskort, RUBRIKBAND, MALLAR };
+const procent = (del, av) => (av > 0 ? `${Math.round((del / av) * 100)} %` : "");
 
 /**
- * Lägeskortet i kanalen: totaler, hjälplista och knappar. Avblås visas alltid —
- * rollgrinden slår till vid trycket (steg 1 är UX, steg 2 är Site Connect).
+ * Lägeskortet i kanalen: fyra rutor, hjälplista och knappar. Avblås och Påminn visas
+ * alltid — rollgrinden slår till vid trycket (steg 1 är UX, steg 2 är Site Connect).
+ * Auto-uppdatering var 10:e sekund och per-zon-staplarna är capade till efter SKYDD;
+ * Uppdatera läget är den manuella vägen ur fas 1-förenklingen.
  */
-function lägeskort(data, musteringUrl) {
+function lägeskort(data, musteringUrl, hjälp = []) {
+  const antal = Number(data.antalMottagare ?? 0);
   const kort = rendera("lageskort", {
     ...data,
-    bandstil: data.antalHjalp > 0 ? "attention" : "good",
-    hjalplista: data.hjalplista || "Ingen har begärt hjälp.",
+    pctSakra: procent(data.antalSakra, antal),
+    pctUtanSvar: procent(data.antalUtanSvar, antal),
     uppdaterat: new Date().toISOString().slice(11, 16),
   }, []);
-  kort.actions = [
-    { type: "Action.Execute", title: "Avblås", style: "destructive", verb: "standdown",
-      data: { correlationId: data.correlationId, zone: data.zon, site: data.site, action: "standdown" } },
-    { type: "Action.Execute", title: "Uppdatera läget", verb: "muster.refresh",
-      data: { correlationId: data.correlationId, zone: data.zon, site: data.site, action: "muster.refresh" } },
-  ];
-  if (musteringUrl) kort.actions.push({ type: "Action.OpenUrl", title: "Öppna mustering", url: musteringUrl });
+
+  // Hjälplistan: en rad per person med Öppna chatt-djuplänk när UPN finns seedad.
+  const block = kort.body.find((b) => b.id === "hjalpblock");
+  if (block) {
+    if (!hjälp.length) block.items = [{ type: "TextBlock", text: "Ingen har begärt hjälp.", wrap: true, isSubtle: true }];
+    else {
+      block.items = [{ type: "TextBlock", text: `**Behöver hjälp (${hjälp.length}):**`, wrap: true, color: "Attention" }];
+      for (const h of hjälp) {
+        const text = `${h.namn || h.aadObjectId.slice(0, 8)} · ${h.zon || data.zon} · svarade ${String(h.tid ?? "").slice(11, 16)}`;
+        block.items.push({
+          type: "ColumnSet",
+          columns: [
+            { type: "Column", width: "stretch", verticalContentAlignment: "Center", items: [{ type: "TextBlock", text, wrap: true }] },
+            ...(h.upn ? [{ type: "Column", width: "auto", items: [{ type: "ActionSet", actions: [
+              { type: "Action.OpenUrl", title: "Öppna chatt", url: `https://teams.microsoft.com/l/chat/0/0?users=${encodeURIComponent(h.upn)}` },
+            ] }] }] : []),
+          ],
+        });
+      }
+    }
+  }
+
+  const bas = { correlationId: data.correlationId, zone: data.zonNyckel ?? data.zon, site: data.site };
+  kort.actions = [];
+  if (musteringUrl) kort.actions.push({ type: "Action.OpenUrl", title: "Öppna mustering i Safespaces", url: musteringUrl });
+  kort.actions.push(
+    { type: "Action.Execute", title: `Påminn ej svarat (${data.antalUtanSvar ?? 0})`, verb: "muster.paminn", data: { ...bas, action: "muster.paminn" } },
+    { type: "Action.Execute", title: "Avblås larm", style: "destructive", verb: "standdown", data: { ...bas, action: "standdown" } },
+    { type: "Action.Execute", title: "Uppdatera läget", verb: "muster.refresh", data: { ...bas, action: "muster.refresh" } },
+  );
   return kort;
 }
 
-module.exports.lägeskort = lägeskort;
+module.exports = { rendera, väljMall, statuskort, lägeskort, procent, RUBRIKBAND, MALLAR };

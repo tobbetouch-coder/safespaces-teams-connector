@@ -25,34 +25,60 @@ async function anrop(väg, init = {}, namn = "supabase") {
   }, { namn });
 }
 
+async function hämtaLarm(correlationId) {
+  const rader = await anrop(`alarms?correlation_id=eq.${encodeURIComponent(correlationId)}&select=*`, {}, "hämtaLarm");
+  return rader?.[0] ?? null;
+}
+
+/**
+ * Larm-id i mock-upens format YYMMDD-NNN. Numret är antalet larm samma dygn + 1.
+ * Ett befintligt larm behåller sitt nummer — säkraLarm körs om vid varje event.
+ */
+async function nästaLarmId(befintligt) {
+  if (befintligt) return befintligt;
+  const dag = new Date().toISOString().slice(2, 10).replace(/-/g, "");
+  const dagens = await anrop(`alarms?larm_id=like.${dag}-*&select=larm_id`, {}, "nästaLarmId");
+  return `${dag}-${String((dagens?.length ?? 0) + 1).padStart(3, "0")}`;
+}
+
 /** Skapar eller uppdaterar larmets huvudrad. Idempotent på correlation_id. */
 async function säkraLarm(event) {
   const status = event.severity === "cleared" ? "avblast" : event.severity === "prealarm" ? "forlarm" : "aktivt";
+  const tidigare = await hämtaLarm(event.correlationId);
+  const larmId = await nästaLarmId(tidigare?.larm_id);
+  const nu = new Date().toISOString();
   const rad = {
     correlation_id: event.correlationId,
-    byggnad: event.plats ?? event.site ?? "",
-    zon: event.zone ?? "",
+    larm_id: larmId,
+    // Visningsfälten skrivs på larmraden så Cloud-skivan visar exakt samma ord som Teams.
+    byggnad: event.byggnad ?? event.plats ?? event.site ?? "",
+    zon: event.zonEtikett ?? event.zone ?? "",
+    zon_nyckel: event.zone ?? "",
+    kalla: event.kalla ?? "",
+    uppsamlingsplats: event.uppsamlingsplats ?? "",
     scenario: event.scenario ?? "",
     status,
     test: event.test === true,
-    uppdaterad: new Date().toISOString(),
-    ...(status === "avblast" ? { avblast_av: event.rollSomAgerade ?? "", avblast_at: new Date().toISOString() } : {}),
+    uppdaterad: nu,
+    ...(tidigare ? {} : { utlost_at: event.occurredAt ?? nu }),
+    ...(status === "avblast" ? { avblast_av: event.rollSomAgerade ?? "", avblast_at: nu } : {}),
   };
   await anrop("alarms?on_conflict=correlation_id", {
     method: "POST",
     headers: { Prefer: "resolution=merge-duplicates,return=minimal" },
     body: JSON.stringify(rad),
   }, "säkraLarm");
-  return rad;
+  return { ...rad, utlost_at: rad.utlost_at ?? tidigare?.utlost_at };
 }
 
 /** status: "safe" | "help". Samma person som svarar igen skriver över sitt eget svar. */
-async function registrera(correlationId, aadObjectId, status, namn, zon) {
+async function registrera(correlationId, aadObjectId, status, namn, zon, upn) {
   const rad = {
     alarm_id: correlationId,
     aad_object_id: aadObjectId,
     namn: namn ?? "",
     zon: zon ?? "",
+    upn: upn ?? "",
     status,
     responded_at: new Date().toISOString(),
   };
@@ -65,7 +91,13 @@ async function registrera(correlationId, aadObjectId, status, namn, zon) {
 }
 
 async function svar(correlationId) {
-  return (await anrop(`mustering?alarm_id=eq.${encodeURIComponent(correlationId)}&select=aad_object_id,namn,status,responded_at`, {}, "svar")) ?? [];
+  return (await anrop(`mustering?alarm_id=eq.${encodeURIComponent(correlationId)}&select=aad_object_id,namn,zon,upn,status,responded_at`, {}, "svar")) ?? [];
+}
+
+/** En persons eget svar — används av Faran över-kortet, som visar "Ditt svar". */
+async function mittSvar(correlationId, aadObjectId) {
+  const rader = await anrop(`mustering?alarm_id=eq.${encodeURIComponent(correlationId)}&aad_object_id=eq.${encodeURIComponent(aadObjectId)}&select=status,responded_at`, {}, "mittSvar");
+  return rader?.[0] ?? null;
 }
 
 /** Underlaget till lägeskortet. Läses ur Supabase, samma källa som Cloud-skivan. */
@@ -75,8 +107,9 @@ async function läge(correlationId, antalBerörda) {
   return {
     berörda: antalBerörda,
     svarat: rader.length,
+    svarande: rader.map((r) => r.aad_object_id),
     säkra: rader.filter((r) => r.status === "safe").length,
-    hjälp: hjälp.map((r) => ({ aadObjectId: r.aad_object_id, namn: r.namn, tid: r.responded_at })),
+    hjälp: hjälp.map((r) => ({ aadObjectId: r.aad_object_id, namn: r.namn, zon: r.zon, upn: r.upn, tid: r.responded_at })),
     utanSvar: Math.max(0, antalBerörda - rader.length),
   };
 }
@@ -88,4 +121,4 @@ async function pinga() {
   return { ok: true, ms: Date.now() - t0 };
 }
 
-module.exports = { säkraLarm, registrera, svar, läge, pinga };
+module.exports = { säkraLarm, hämtaLarm, registrera, svar, mittSvar, läge, pinga };

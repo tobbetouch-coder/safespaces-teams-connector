@@ -2,21 +2,29 @@
   "$schema": "http://adaptivecards.io/schemas/adaptive-card.json",
   "type": "AdaptiveCard", "version": "1.5",
   "body": [
-    { "type": "Container", "style": "{{bandstil}}", "bleed": true, "items": [
-      { "type": "TextBlock", "text": "{{rubrikband}} · {{plats}}", "weight": "Bolder", "size": "Large" }
+    { "type": "Container", "style": "attention", "bleed": true, "items": [
+      { "type": "TextBlock", "text": "UTRYMNING PÅGÅR – {{byggnad}}", "weight": "Bolder", "size": "Large", "color": "Attention", "wrap": true },
+      { "type": "TextBlock", "text": "Brandlarm {{klockslag}} · Uppdaterat {{uppdaterat}} · Larm {{larmId}}", "size": "Small", "isSubtle": true, "wrap": true, "spacing": "None" }
     ]},
     { "type": "ColumnSet", "columns": [
       { "type": "Column", "width": "stretch", "items": [
-        { "type": "TextBlock", "text": "I säkerhet", "isSubtle": true, "spacing": "None" },
-        { "type": "TextBlock", "text": "{{antalSakra}}", "size": "ExtraLarge", "weight": "Bolder", "color": "Good", "spacing": "None" } ] },
+        { "type": "TextBlock", "text": "Mottagare", "isSubtle": true, "spacing": "None", "wrap": true },
+        { "type": "TextBlock", "text": "{{antalMottagare}}", "size": "ExtraLarge", "weight": "Bolder", "spacing": "None" },
+        { "type": "TextBlock", "text": "notifierade", "size": "Small", "isSubtle": true, "spacing": "None", "wrap": true } ] },
       { "type": "Column", "width": "stretch", "items": [
-        { "type": "TextBlock", "text": "Behöver hjälp", "isSubtle": true, "spacing": "None" },
-        { "type": "TextBlock", "text": "{{antalHjalp}}", "size": "ExtraLarge", "weight": "Bolder", "color": "Attention", "spacing": "None" } ] },
+        { "type": "TextBlock", "text": "I säkerhet", "isSubtle": true, "spacing": "None", "wrap": true },
+        { "type": "TextBlock", "text": "{{antalSakra}}", "size": "ExtraLarge", "weight": "Bolder", "color": "Good", "spacing": "None" },
+        { "type": "TextBlock", "text": "{{pctSakra}}", "size": "Small", "isSubtle": true, "spacing": "None", "wrap": true } ] },
       { "type": "Column", "width": "stretch", "items": [
-        { "type": "TextBlock", "text": "Inget svar", "isSubtle": true, "spacing": "None" },
-        { "type": "TextBlock", "text": "{{antalUtanSvar}}", "size": "ExtraLarge", "weight": "Bolder", "spacing": "None" } ] }
+        { "type": "TextBlock", "text": "Behöver hjälp", "isSubtle": true, "spacing": "None", "wrap": true },
+        { "type": "TextBlock", "text": "{{antalHjalp}}", "size": "ExtraLarge", "weight": "Bolder", "color": "Attention", "spacing": "None" },
+        { "type": "TextBlock", "text": "kontaktas nu", "size": "Small", "isSubtle": true, "spacing": "None", "wrap": true } ] },
+      { "type": "Column", "width": "stretch", "items": [
+        { "type": "TextBlock", "text": "Ej svarat", "isSubtle": true, "spacing": "None", "wrap": true },
+        { "type": "TextBlock", "text": "{{antalUtanSvar}}", "size": "ExtraLarge", "weight": "Bolder", "spacing": "None" },
+        { "type": "TextBlock", "text": "{{pctUtanSvar}}", "size": "Small", "isSubtle": true, "spacing": "None", "wrap": true } ] }
     ]},
-    { "type": "TextBlock", "text": "{{hjalplista}}", "wrap": true, "color": "Attention" },
-    { "type": "TextBlock", "text": "Uppdaterat {{uppdaterat}} · Larm {{correlationId}}", "size": "Small", "isSubtle": true, "wrap": true }
+    { "type": "Container", "id": "hjalpblock", "items": [] },
+    { "type": "TextBlock", "id": "sidfot", "text": "Svaren kommer från kortet i personlig chatt.", "size": "Small", "isSubtle": true, "wrap": true }
   ]
 }

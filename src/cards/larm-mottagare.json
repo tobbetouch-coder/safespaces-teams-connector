@@ -3,20 +3,22 @@
   "type": "AdaptiveCard", "version": "1.5",
   "body": [
     { "type": "Container", "style": "attention", "bleed": true, "items": [
-      { "type": "TextBlock", "text": "{{rubrikband}}", "weight": "Bolder", "size": "Large", "color": "Light" },
-      { "type": "TextBlock", "text": "{{ingress}}", "wrap": true, "color": "Light" }
+      { "type": "TextBlock", "text": "🔥 BRANDLARM", "weight": "Bolder", "size": "Large", "color": "Attention", "wrap": true },
+      { "type": "TextBlock", "text": "Utrym byggnaden nu", "weight": "Bolder", "wrap": true, "spacing": "None" }
     ]},
     { "type": "FactSet", "facts": [
-      { "title": "Byggnad", "value": "{{plats}}" },
+      { "title": "Byggnad", "value": "{{byggnad}}" },
       { "title": "Zon", "value": "{{zon}}" },
-      { "title": "Larm", "value": "{{klockslag}}" }
+      { "title": "Tid", "value": "{{klockslag}}" },
+      { "title": "Källa", "value": "{{kalla}}" }
     ]},
-    { "type": "TextBlock", "text": "{{instruktion}}", "wrap": true },
-    { "type": "TextBlock", "text": "Larm {{correlationId}} · {{status}}", "size": "Small", "isSubtle": true, "wrap": true }
+    { "type": "TextBlock", "text": "Gå till närmaste nödutgång. Använd inte hissen.", "wrap": true },
+    { "type": "TextBlock", "text": "📍 **Uppsamlingsplats:** {{uppsamlingsplats}}", "wrap": true },
+    { "type": "TextBlock", "text": "Larm {{larmId}} · Skickat till alla i Zon {{zon}}", "size": "Small", "isSubtle": true, "wrap": true }
   ],
   "actions": [
-    { "type": "Action.Execute", "title": "Jag är i säkerhet", "style": "positive", "verb": "muster.safe", "data": { "correlationId": "{{correlationId}}", "zone": "{{zon}}", "site": "{{site}}", "action": "muster.safe" } },
-    { "type": "Action.Execute", "title": "Jag behöver hjälp", "style": "destructive", "verb": "muster.help", "data": { "correlationId": "{{correlationId}}", "zone": "{{zon}}", "site": "{{site}}", "action": "muster.help" } },
-    { "type": "Action.OpenUrl", "title": "Visa utrymningskarta", "url": "{{kartaUrl}}" }
+    { "type": "Action.Execute", "title": "Jag är i säkerhet", "style": "positive", "verb": "muster.safe", "data": { "correlationId": "{{correlationId}}", "zone": "{{zonNyckel}}", "site": "{{site}}", "action": "muster.safe" } },
+    { "type": "Action.Execute", "title": "Jag behöver hjälp", "style": "destructive", "verb": "muster.help", "data": { "correlationId": "{{correlationId}}", "zone": "{{zonNyckel}}", "site": "{{site}}", "action": "muster.help" } },
+    { "type": "Action.OpenUrl", "title": "🗺 Visa utrymningskarta", "url": "{{kartaUrl}}" }
   ]
 }

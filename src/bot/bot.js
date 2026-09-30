@@ -4,12 +4,12 @@ const { upsertRef, markWelcomed, getByAad, allaKanaler } = require("../store/ref
 const { sendCard } = require("../proactive/send");
 const { hanteraExecute } = require("../actions/execute");
 const { presentEvent } = require("../present/presentEvent");
-const { rollFörPerson } = require("../store/config");
+const { rollFörPerson, routing, allaPersoner, personFörAad } = require("../store/config");
 const { rendera } = require("../cards/render");
 const { inspelade } = require("../bridge/stub");
 const { uppdateraLägeskort } = require("../present/mustering");
 const { läge } = require("../store/mustering");
-const { allaPersoner } = require("../store/config");
+const { byggData } = require("../present/data");
 
 // Simulatorn: ett correlationId per körning, så att in-place-uppdateringen syns.
 const SITE = process.env.DEMO_SITE ?? "hus-3-uppsala";
@@ -68,8 +68,11 @@ class SafeSpacesBot extends TeamsActivityHandler {
     const rad = await this.spara(context);
     if (!rad || rad.welcomed) return;
     try {
-      const roll = await rollFörPerson(context.activity.from?.aadObjectId);
-      const kort = rendera("valkomst", { rollEtikett: roll ?? "ingen roll ännu" }, []);
+      const aad = context.activity.from?.aadObjectId;
+      const rutt = await routing("COID", SITE);
+      const p = aad ? await personFörAad(aad) : null;
+      const data = byggData({ correlationId: "valkomst", site: SITE, zone: rutt?.zonNyckel ?? ZON }, rutt, null);
+      const kort = rendera("valkomst", { ...data, zon: p?.zon || data.zon }, []);
       await sendCard(TurnContext.getConversationReference(context.activity), kort);
       await markWelcomed(rad.partitionKey, rad.rowKey);
     } catch (err) { console.error("välkomstkortet gick inte fram", err); }
@@ -90,7 +93,7 @@ class SafeSpacesBot extends TeamsActivityHandler {
   async simulera(context, text) {
     const del = text.split(/\s+/)[1] ?? "";
     const korr = this.korrelation ?? (this.korrelation = `sim-${Date.now()}`);
-    const bas = { correlationId: korr, tenant: "COID", site: SITE, zone: ZON, occurredAt: new Date().toISOString(), plats: "Hus 3, Uppsala" };
+    const bas = { correlationId: korr, tenant: "COID", site: SITE, zone: ZON, occurredAt: new Date().toISOString(), kalla: process.env.DEMO_KALLA ?? "Brandlarmcentral" };
 
     if (del === "status") {
       const rader = await inspelade(korr);
@@ -107,14 +110,14 @@ class SafeSpacesBot extends TeamsActivityHandler {
         instruktion: "Utrym via närmaste utrymningsväg och gå till återsamlingsplatsen. Svara nedan när du är i säkerhet." },
       forlarm: { scenario: "Förlarm och bekräftelse", severity: "prealarm", test: false, instruktion: "Kamerazonen har gett förlarm. Bekräfta om det är skarpt, avfärda om det är falsklarm." },
       trigger: { scenario: "Utrymning", severity: "active", test: false, instruktion: "Lämna byggnaden via närmaste utrymningsväg." },
-      clear: { scenario: "Faran över", severity: "cleared", test: false, rollSomAgerade: "Säkerhetsansvarig", larmintervall: `${bas.occurredAt.slice(11, 16)}` },
+      clear: { scenario: "Faran över", severity: "cleared", test: false, rollSomAgerade: "Säkerhetsansvarig" },
       ovning: { scenario: "Övning", severity: "active", test: true, instruktion: "Detta är en övning. Följ ordinarie utrymningsrutin." },
     };
     const v = varianter[del];
     if (!v) { await context.sendActivity("Använd: simulera brandlarm | forlarm | trigger | clear | ovning | status | nytt"); return; }
 
     const res = await presentEvent({ ...bas, ...v });
-    await context.sendActivity(`Simulerat ${del} för ${korr}: mall ${res.mall}, ${res.nya} nya kort och ${res.uppdaterade} uppdaterade.`);
+    await context.sendActivity(`Simulerat ${del} för ${korr} (larm ${res.larmId}): mall ${res.mall}, ${res.nya} nya kort och ${res.uppdaterade} uppdaterade.`);
   }
 }
 

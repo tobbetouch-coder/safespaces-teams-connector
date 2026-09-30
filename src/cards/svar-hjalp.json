@@ -3,10 +3,20 @@
   "type": "AdaptiveCard", "version": "1.5",
   "body": [
     { "type": "Container", "style": "attention", "bleed": true, "items": [
-      { "type": "TextBlock", "text": "Hjälp är begärd", "weight": "Bolder", "size": "Medium", "color": "Light" }
+      { "type": "TextBlock", "text": "🔥 BRANDLARM", "weight": "Bolder", "size": "Large", "color": "Attention", "wrap": true },
+      { "type": "TextBlock", "text": "Utrymning pågår", "weight": "Bolder", "wrap": true, "spacing": "None" }
     ]},
-    { "type": "TextBlock", "text": "Säkerhetsansvarig ser att du behöver hjälp. Stanna där du är om du kan.", "wrap": true },
-    { "type": "FactSet", "facts": [ { "title": "Ditt svar", "value": "Behöver hjälp {{svarstid}}" } ] },
-    { "type": "TextBlock", "text": "Larm {{correlationId}}", "size": "Small", "isSubtle": true }
+    { "type": "FactSet", "facts": [
+      { "title": "Byggnad", "value": "{{byggnad}}" },
+      { "title": "Zon", "value": "{{zon}}" },
+      { "title": "Tid", "value": "{{klockslag}}" },
+      { "title": "Källa", "value": "{{kalla}}" }
+    ]},
+    { "type": "TextBlock", "text": "⚠ **Registrerad: behöver hjälp {{svarstid}}**", "wrap": true, "color": "Attention", "size": "Medium" },
+    { "type": "TextBlock", "text": "Säkerhetsansvarig ser detta och kontaktar dig. Ta dig till uppsamlingsplatsen om du kan.", "wrap": true },
+    { "type": "TextBlock", "text": "Larm {{larmId}} · Säkerhetsansvarig kontaktar dig", "size": "Small", "isSubtle": true, "wrap": true }
+  ],
+  "actions": [
+    { "type": "Action.Execute", "title": "Ändra mitt svar", "verb": "muster.andra", "data": { "correlationId": "{{correlationId}}", "zone": "{{zonNyckel}}", "site": "{{site}}", "action": "muster.andra" } }
   ]
 }

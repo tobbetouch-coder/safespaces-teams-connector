@@ -2,17 +2,26 @@
   "$schema": "http://adaptivecards.io/schemas/adaptive-card.json",
   "type": "AdaptiveCard", "version": "1.5",
   "body": [
-    { "type": "Container", "style": "accent", "bleed": true, "items": [
-      { "type": "TextBlock", "text": "ÖVNING", "weight": "Bolder", "size": "ExtraLarge", "horizontalAlignment": "Center" },
-      { "type": "TextBlock", "text": "Detta är en övning. Inget skarpt larm.", "horizontalAlignment": "Center", "wrap": true }
+    { "type": "Container", "style": "warning", "bleed": true, "items": [
+      { "type": "TextBlock", "text": "ÖVNING — detta är en övning", "weight": "Bolder", "wrap": true, "horizontalAlignment": "Center" }
     ]},
-    { "type": "TextBlock", "text": "{{rubrikband}} · {{scenario}}", "weight": "Bolder", "size": "Medium", "wrap": true },
+    { "type": "Container", "style": "warning", "items": [
+      { "type": "TextBlock", "text": "🔥 ÖVNING: BRANDLARM", "weight": "Bolder", "size": "Large", "wrap": true },
+      { "type": "TextBlock", "text": "Öva utrymning nu", "weight": "Bolder", "wrap": true, "spacing": "None" }
+    ]},
     { "type": "FactSet", "facts": [
-      { "title": "Plats", "value": "{{plats}}" },
+      { "title": "Byggnad", "value": "{{byggnad}}" },
       { "title": "Zon", "value": "{{zon}}" },
-      { "title": "Klockslag", "value": "{{klockslag}}" }
+      { "title": "Tid", "value": "{{klockslag}}" },
+      { "title": "Källa", "value": "{{kalla}}" }
     ]},
-    { "type": "TextBlock", "text": "{{instruktion}}", "wrap": true },
-    { "type": "TextBlock", "text": "Larm {{correlationId}} · {{status}}", "size": "Small", "isSubtle": true, "wrap": true }
+    { "type": "TextBlock", "text": "Gå till närmaste nödutgång. Använd inte hissen.", "wrap": true },
+    { "type": "TextBlock", "text": "📍 **Uppsamlingsplats:** {{uppsamlingsplats}}", "wrap": true },
+    { "type": "TextBlock", "text": "Övning {{larmId}} · Skickat till alla i Zon {{zon}}", "size": "Small", "isSubtle": true, "wrap": true }
+  ],
+  "actions": [
+    { "type": "Action.Execute", "title": "Jag är i säkerhet", "style": "positive", "verb": "muster.safe", "data": { "correlationId": "{{correlationId}}", "zone": "{{zonNyckel}}", "site": "{{site}}", "action": "muster.safe" } },
+    { "type": "Action.Execute", "title": "Jag behöver hjälp", "style": "destructive", "verb": "muster.help", "data": { "correlationId": "{{correlationId}}", "zone": "{{zonNyckel}}", "site": "{{site}}", "action": "muster.help" } },
+    { "type": "Action.OpenUrl", "title": "🗺 Visa utrymningskarta", "url": "{{kartaUrl}}" }
   ]
 }

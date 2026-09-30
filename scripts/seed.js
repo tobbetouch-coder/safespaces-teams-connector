@@ -8,8 +8,8 @@ const cred = new AzureNamedKeyCredential(KONTO, process.env.STORAGE_KEY);
 const klient = (t) => new TableClient(`https://${KONTO}.table.core.windows.net`, t, cred);
 
 const ROLLER = [
-  { role: "sakerhetsansvarig", entraGroupId: "cfdce823-04c9-465a-9738-b09d81119cd2", etikett: "Säkerhetsansvarig", actions: "confirm,dismiss,standdown" },
-  { role: "platschef", entraGroupId: "b04c48ae-75ff-49d3-9cec-51128ae63b9d", etikett: "Platschef", actions: "confirm,standdown" },
+  { role: "sakerhetsansvarig", entraGroupId: "cfdce823-04c9-465a-9738-b09d81119cd2", etikett: "Säkerhetsansvarig", actions: "confirm,dismiss,standdown,muster.paminn" },
+  { role: "platschef", entraGroupId: "b04c48ae-75ff-49d3-9cec-51128ae63b9d", etikett: "Platschef", actions: "confirm,standdown,muster.paminn" },
   { role: "operator", entraGroupId: "f0ac7e7a-fd4d-4147-87c3-baa1efd37383", etikett: "Larmoperatör", actions: "confirm,dismiss" },
   { role: "vaktare", entraGroupId: "8d233f23-73a2-4c87-9650-df46ecc915f6", etikett: "Väktare", actions: "confirm" },
   { role: "medarbetare", entraGroupId: "7866c26f-aab6-4dbb-b4f0-95422f08fcee", etikett: "Medarbetare", actions: "" },
@@ -17,15 +17,27 @@ const ROLLER = [
 
 // Medlemskapen expanderade ur Entra-grupperna 2026-09-30, en medlem per grupp.
 // Statiskt för demon: ingen live-expansion mot Graph på mässgolvet.
+// UPN:erna lästa ur Entra 2026-09-30. De driver hjälplistans Öppna chatt-djuplänk
+// på lägeskortet; utan UPN faller knappen bort och raden visas ändå.
 const MEDLEMMAR = [
-  { aadObjectId: "a533691c-f08d-42a5-9647-4a65222f9b8d", role: "sakerhetsansvarig" },
-  { aadObjectId: "7d79549d-6698-45ca-a75c-c65fdc78aa38", role: "platschef" },
-  { aadObjectId: "29f0ac93-aa28-4587-9061-0122f4b0785d", role: "operator" },
-  { aadObjectId: "abf263e5-293b-4a3f-8211-b0171aab55a9", role: "vaktare" },
-  { aadObjectId: "af975cb7-7fbd-4c73-8466-933bd2542d9a", role: "medarbetare" },
+  { aadObjectId: "a533691c-f08d-42a5-9647-4a65222f9b8d", role: "sakerhetsansvarig", upn: "demo.sakerhetsansvarig@co-ideation.com", namn: "Säkerhetsansvarig" },
+  { aadObjectId: "7d79549d-6698-45ca-a75c-c65fdc78aa38", role: "platschef", upn: "demo.platschef@co-ideation.com", namn: "Platschef" },
+  { aadObjectId: "29f0ac93-aa28-4587-9061-0122f4b0785d", role: "operator", upn: "demo.operator@co-ideation.com", namn: "Larmoperatör" },
+  { aadObjectId: "abf263e5-293b-4a3f-8211-b0171aab55a9", role: "vaktare", upn: "demo.vaktare@co-ideation.com", namn: "Väktare" },
+  { aadObjectId: "af975cb7-7fbd-4c73-8466-933bd2542d9a", role: "medarbetare", upn: "demo.medarbetare@co-ideation.com", namn: "Medarbetare" },
 ];
 
 const SITE = process.env.SITE ?? "hus-3-uppsala";
+
+// Demons kuliss. Samma ord skrivs på alarms-raden i Supabase, så Cloud-skivan och
+// Teams visar identisk text. Skolscenariots värden kommer med det manuset.
+const PLATS = {
+  byggnad: "Hus 3, Uppsala",
+  zonEtikett: "Plan 2 · Norr",
+  zonNyckel: process.env.DEMO_ZON ?? "plan-2-norr",
+  uppsamlingsplats: "Parkering P2, nordöstra hörnet",
+  kalla: "Brandlarmcentral",
+};
 
 async function säkra(t) {
   try { await klient(t).createTable(); } catch (e) { if (e.statusCode !== 409) throw e; }
@@ -46,7 +58,7 @@ async function kanalFrånRefs() {
   const rutt = argTeam && argKanal ? { teamId: argTeam, channelId: argKanal } : await kanalFrånRefs();
   if (!rutt) throw new Error("hittar ingen kanalrad i refs och inga argument gavs");
 
-  await klient("routing").upsertEntity({ partitionKey: "COID", rowKey: SITE, teamId: rutt.teamId, channelId: rutt.channelId }, "Merge");
+  await klient("routing").upsertEntity({ partitionKey: "COID", rowKey: SITE, teamId: rutt.teamId, channelId: rutt.channelId, ...PLATS }, "Merge");
   console.log(`  routing: ${SITE} → team ${String(rutt.teamId).slice(0, 18)}… kanal ${String(rutt.channelId).slice(0, 18)}…`);
 
   for (const r of ROLLER) {
@@ -56,9 +68,9 @@ async function kanalFrånRefs() {
   console.log(`  roles och authority: ${ROLLER.length} roller`);
 
   for (const m of MEDLEMMAR) {
-    await klient("membership").upsertEntity({ partitionKey: "COID", rowKey: m.aadObjectId, role: m.role }, "Merge");
+    await klient("membership").upsertEntity({ partitionKey: "COID", rowKey: m.aadObjectId, role: m.role, upn: m.upn, namn: m.namn, zon: PLATS.zonEtikett }, "Merge");
   }
-  console.log(`  membership: ${MEDLEMMAR.length} personer`);
+  console.log(`  membership: ${MEDLEMMAR.length} personer, ${MEDLEMMAR.filter((m) => m.upn).length} med UPN`);
 
   for (const t of ["routing", "roles", "membership", "authority"]) {
     let n = 0;

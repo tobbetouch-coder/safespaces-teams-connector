@@ -2,9 +2,21 @@
   "$schema": "http://adaptivecards.io/schemas/adaptive-card.json",
   "type": "AdaptiveCard", "version": "1.5",
   "body": [
-    { "type": "TextBlock", "text": "Tack. Säkerhetsansvarig ser att du är i säkerhet.", "wrap": true, "weight": "Bolder" },
-    { "type": "TextBlock", "text": "Du får ett nytt meddelande när faran är över.", "wrap": true },
-    { "type": "FactSet", "facts": [ { "title": "Ditt svar", "value": "I säkerhet {{svarstid}}" } ] },
-    { "type": "TextBlock", "text": "Larm {{correlationId}}", "size": "Small", "isSubtle": true }
+    { "type": "Container", "style": "attention", "bleed": true, "items": [
+      { "type": "TextBlock", "text": "🔥 BRANDLARM", "weight": "Bolder", "size": "Large", "color": "Attention", "wrap": true },
+      { "type": "TextBlock", "text": "Utrymning pågår", "weight": "Bolder", "wrap": true, "spacing": "None" }
+    ]},
+    { "type": "FactSet", "facts": [
+      { "title": "Byggnad", "value": "{{byggnad}}" },
+      { "title": "Zon", "value": "{{zon}}" },
+      { "title": "Tid", "value": "{{klockslag}}" },
+      { "title": "Källa", "value": "{{kalla}}" }
+    ]},
+    { "type": "TextBlock", "text": "✓ **Registrerad: i säkerhet {{svarstid}}**", "wrap": true, "color": "Good", "size": "Medium" },
+    { "type": "TextBlock", "text": "Stanna på uppsamlingsplatsen tills du får klartecken.", "wrap": true },
+    { "type": "TextBlock", "text": "Larm {{larmId}} · Ditt svar syns hos säkerhetsansvarig", "size": "Small", "isSubtle": true, "wrap": true }
+  ],
+  "actions": [
+    { "type": "Action.Execute", "title": "Ändra mitt svar", "verb": "muster.andra", "data": { "correlationId": "{{correlationId}}", "zone": "{{zonNyckel}}", "site": "{{site}}", "action": "muster.andra" } }
   ]
 }

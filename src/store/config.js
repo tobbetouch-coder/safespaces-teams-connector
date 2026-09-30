@@ -63,11 +63,22 @@ async function rollerSomFår(action) {
 async function personerIRoller(roller) {
   if (!roller.length) return [];
   const rader = await lista("membership");
-  return rader.filter((r) => roller.includes(r.role)).map((r) => ({ aadObjectId: r.rowKey, role: r.role }));
+  return rader.filter((r) => roller.includes(r.role)).map(person);
 }
 
 async function allaPersoner() {
-  return (await lista("membership")).map((r) => ({ aadObjectId: r.rowKey, role: r.role }));
+  return (await lista("membership")).map(person);
 }
 
-module.exports = { tabell, säkra, hämta, lista, routing, rollFörPerson, tillåtnaÅtgärder, fårGöra, rollerSomFår, personerIRoller, allaPersoner };
+/** Membership-raden som korten vill ha den: UPN driver hjälplistans Öppna chatt. */
+function person(r) {
+  return { aadObjectId: r.rowKey, role: r.role, upn: r.upn ?? "", zon: r.zon ?? "", namn: r.namn ?? "" };
+}
+
+/** En enskild membership-rad, för knapphanteraren. */
+async function personFörAad(aadObjectId) {
+  const rad = await hämta("membership", "COID", aadObjectId);
+  return rad ? person(rad) : null;
+}
+
+module.exports = { tabell, säkra, hämta, lista, routing, rollFörPerson, tillåtnaÅtgärder, fårGöra, rollerSomFår, personerIRoller, allaPersoner, personFörAad };

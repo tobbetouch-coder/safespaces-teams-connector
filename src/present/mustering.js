@@ -5,10 +5,10 @@ const { adapter } = require("../bot/adapter");
 const { routing, allaPersoner } = require("../store/config");
 const { getByChannel } = require("../store/refs");
 const { hämtaFörKorrelation, hämtaEvent, spara } = require("../store/cards");
-const { byggLägeskort } = require("./presentEvent");
+const { hämtaLarm } = require("../store/mustering");
+const { byggLägeskort, nyckel } = require("./presentEvent");
+const { byggData } = require("./data");
 const { medBackoff } = require("../util/retry");
-
-const nyckel = (v) => String(v ?? "").replace(/[/\\#?]/g, "_");
 
 /** Uppdaterar kanalens lägeskort in-place. Gör inget om kortet inte finns. */
 async function uppdateraLägeskort(correlationId) {
@@ -22,14 +22,9 @@ async function uppdateraLägeskort(correlationId) {
 
   const rader = await hämtaFörKorrelation(correlationId);
   const kanalrad = rader.find((r) => r.rowKey === nyckel(rutt.channelId));
-  const antal = (await allaPersoner()).length;
-  const data = {
-    correlationId,
-    zon: event.zone ?? "",
-    site: event.site ?? "",
-    plats: event.plats ?? event.site ?? "",
-  };
-  const kort = await byggLägeskort(event, data, antal);
+  const larm = await hämtaLarm(correlationId).catch(() => null);
+  const data = byggData(event, rutt, larm);
+  const kort = await byggLägeskort(data, (await allaPersoner()).length);
 
   await medBackoff(() => adapter.continueConversationAsync(process.env.MicrosoftAppId, ref, async (context) => {
     const aktivitet = { attachments: [CardFactory.adaptiveCard(kort)] };

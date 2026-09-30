@@ -2,8 +2,22 @@
   "$schema": "http://adaptivecards.io/schemas/adaptive-card.json",
   "type": "AdaptiveCard", "version": "1.5",
   "body": [
-    { "type": "TextBlock", "text": "WIAAS Safe Spaces", "weight": "Bolder", "size": "Medium" },
-    { "type": "TextBlock", "text": "Du får larm och övningar här i Teams. Knapparna du ser styrs av din roll.", "wrap": true },
-    { "type": "FactSet", "facts": [ { "title": "Din roll", "value": "{{rollEtikett}}" } ] }
+    { "type": "Container", "style": "emphasis", "bleed": true, "items": [
+      { "type": "TextBlock", "text": "Hej! Jag är WIAAS Safespaces", "weight": "Bolder", "size": "Large", "wrap": true },
+      { "type": "TextBlock", "text": "Din larm- och utrymningskanal i Teams", "isSubtle": true, "wrap": true, "spacing": "None" }
+    ]},
+    { "type": "TextBlock", "text": "Du får larm och utrymningsinstruktioner för:", "wrap": true },
+    { "type": "FactSet", "facts": [
+      { "title": "Byggnad", "value": "{{byggnad}}" },
+      { "title": "Zon", "value": "{{zon}}" },
+      { "title": "Uppsamlingsplats", "value": "{{uppsamlingsplats}}" }
+    ]},
+    { "type": "TextBlock", "text": "Vid larm svarar du direkt på kortet, så att säkerhetsansvarig vet att du är i säkerhet.", "wrap": true },
+    { "type": "TextBlock", "text": "Jag skickar inget annat än larm, övningar och klartecken.", "wrap": true },
+    { "type": "TextBlock", "text": "Aktiverad av din organisation · {{aktiveringsdatum}}", "size": "Small", "isSubtle": true, "wrap": true }
+  ],
+  "actions": [
+    { "type": "Action.Execute", "title": "Skicka ett testlarm till mig", "verb": "test.larm", "data": { "action": "test.larm" } },
+    { "type": "Action.OpenUrl", "title": "Ändra min zon", "url": "{{zonUrl}}" }
   ]
 }
