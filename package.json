@@ -1,16 +1,18 @@
 {
   "name": "safespaces-teams-connector",
   "version": "0.1.0",
-  "description": "WIAAS Safe Spaces — Teams-connector (BO-015). Milestone A: echo.",
+  "description": "WIAAS Safe Spaces — Teams-connector (BO-015). Milestone B: reference-store och proaktiv sändning.",
   "private": true,
   "main": "src/functions/*.js",
   "scripts": {
     "start": "func start",
-    "deploy": "func azure functionapp publish func-safespaces-fe85f8 --build remote"
+    "deploy": "az functionapp deployment source config-zip -g rg-safespaces-demo -n func-safespaces-flex --src deploy-flex.zip --build-remote true"
   },
   "dependencies": {
     "@azure/functions": "^4.5.1",
-    "botbuilder": "^4.23.1"
+    "botbuilder": "^4.23.1",
+    "@azure/data-tables": "^13.3.1",
+    "@azure/identity": "^4.5.0"
   },
   "engines": {
     "node": ">=20"

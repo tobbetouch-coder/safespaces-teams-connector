@@ -1,32 +1,75 @@
-// BO-015 Milestone A: /api/messages tar emot aktiviteter från Bot Service och ekar texten.
-// Autentiseringen läses ur app settings (MicrosoftAppId/Password/Type/TenantId) — aldrig ur kod.
-// Hemligheten kommer från Key Vault via referensen i MicrosoftAppPassword.
+// BO-015 Milestone B: /api/messages tar emot aktiviteter, sparar conversation references
+// och kan skicka proaktiva kort. Autentiseringen läses ur app settings — aldrig ur kod.
 const { app } = require("@azure/functions");
-const { CloudAdapter, ConfigurationBotFrameworkAuthentication, ActivityHandler } = require("botbuilder");
-
-const auth = new ConfigurationBotFrameworkAuthentication(process.env);
-const adapter = new CloudAdapter(auth);
-
-adapter.onTurnError = async (context, error) => {
-  // Loggas till App Insights (ai-safespaces-demo) så att tysta auth-fel syns.
-  console.error("onTurnError", error);
-  await context.sendActivity("Något gick fel i boten.");
-};
+const { ActivityHandler, TurnContext } = require("botbuilder");
+const { adapter } = require("../bot/adapter");
+const { upsertRef, markWelcomed, getByAad, allaKanaler } = require("../store/refs");
+const { sendCard } = require("../proactive/send");
 
 const bot = new ActivityHandler();
+
+// Bälte och hängslen: varje meddelande uppdaterar referensen, om install-eventet missades.
 bot.onMessage(async (context, next) => {
-  await context.sendActivity(`echo: ${context.activity.text}`);
-  await next();
-});
-bot.onMembersAdded(async (context, next) => {
-  for (const m of context.activity.membersAdded ?? []) {
-    if (m.id !== context.activity.recipient.id) await context.sendActivity("Safe Spaces-boten är uppe. Skriv något så ekar jag det.");
+  await spara(context);
+  const text = (context.activity.text ?? "").trim().toLowerCase();
+
+  if (text === "larmtest") {
+    // Demoväg tills BO-016:s routing finns: kortet går till alla kända kanaler och till avsändaren.
+    const kanaler = await allaKanaler();
+    const egen = context.activity.from?.aadObjectId ? await getByAad(context.activity.from.aadObjectId) : null;
+    let skickade = 0;
+    for (const ref of kanaler) { await sendCard(ref); skickade++; }
+    if (egen) { await sendCard(egen); skickade++; }
+    await context.sendActivity(`Testkort skickat till ${kanaler.length} kanal(er) och ${egen ? "din personliga chatt" : "ingen personlig chatt (referens saknas)"}. Totalt ${skickade}.`);
+  } else {
+    await context.sendActivity(`echo: ${context.activity.text}`);
   }
   await next();
 });
 
-// CloudAdapter.process vill ha Express-liknande req/res. Azure Functions v4 ger fetch-liknande
-// objekt, så vi bryggar över med ett minimalt skal.
+// Appen installeras för en person eller ett team.
+bot.onInstallationUpdate(async (context, next) => {
+  if ((context.activity.action ?? "").toLowerCase() === "add") await välkomnaEnGång(context);
+  await next();
+});
+
+// Boten läggs i en konversation.
+bot.onConversationUpdate(async (context, next) => {
+  const botId = context.activity.recipient?.id;
+  const lades = (context.activity.membersAdded ?? []).some((m) => m.id === botId);
+  if (lades) {
+    const rad = await spara(context);
+    await välkomna(context, rad);
+  }
+  await next();
+});
+
+async function spara(context) {
+  try {
+    const rad = await upsertRef(context.activity);
+    console.log(`ref sparad: ${rad.kind} ${rad.rowKey}`);
+    return rad;
+  } catch (err) {
+    console.error("kunde inte spara referensen", err);
+    return null;
+  }
+}
+
+// Välkomstkortet bevisar hela kedjan: install fångar referensen, och referensen bär ett kort.
+// Skickas exakt en gång per konversation — install fyrar både installationUpdate och
+// conversationUpdate, och utan grinden kom kortet i dubbel uppsättning.
+async function välkomnaEnGång(context) {
+  const rad = await spara(context);
+  if (!rad || rad.welcomed) return;
+  try {
+    await sendCard(TurnContext.getConversationReference(context.activity));
+    await markWelcomed(rad.partitionKey, rad.rowKey);
+    console.log(`välkomst skickad en gång: ${rad.kind} ${rad.rowKey}`);
+  } catch (err) {
+    console.error("välkomstkortet gick inte fram", err);
+  }
+}
+
 app.http("messages", {
   methods: ["POST"],
   authLevel: "anonymous",

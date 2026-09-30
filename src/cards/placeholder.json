@@ -1,0 +1,9 @@
+{
+  "$schema": "http://adaptivecards.io/schemas/adaptive-card.json",
+  "type": "AdaptiveCard",
+  "version": "1.5",
+  "body": [
+    { "type": "TextBlock", "text": "Safe Spaces — testkort", "weight": "Bolder", "size": "Medium" },
+    { "type": "TextBlock", "text": "Platshållare från Milestone B. BO-016 ersätter den med riktiga mallar.", "wrap": true, "isSubtle": true }
+  ]
+}
