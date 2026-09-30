@@ -61,14 +61,16 @@ async function upsertRef(activity) {
     updatedAt: new Date().toISOString(),
     welcomed: befintlig?.welcomed === true,
   };
-  await hämtaKlient().upsertEntity(rad, "Replace");
+  // Merge, inte Replace: ingen create/update-gren, inga 409 vid samtidiga leveranser.
+  await hämtaKlient().upsertEntity(rad, "Merge");
   return { ...rad, ny: !befintlig };
 }
 
 /** Markerar raden som välkomnad. Gör välkomstkortet idempotent, precis som lagringen. */
 async function markWelcomed(partitionKey, rowKey) {
   await säkraTabell();
-  await hämtaKlient().updateEntity({ partitionKey, rowKey, welcomed: true }, "Merge");
+  // upsert-merge i stället för strikt update: kan inte etag-krocka och kan inte ge 404.
+  await hämtaKlient().upsertEntity({ partitionKey, rowKey, welcomed: true }, "Merge");
 }
 
 async function* alla(filter) {

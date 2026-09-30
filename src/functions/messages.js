@@ -37,10 +37,7 @@ bot.onInstallationUpdate(async (context, next) => {
 bot.onConversationUpdate(async (context, next) => {
   const botId = context.activity.recipient?.id;
   const lades = (context.activity.membersAdded ?? []).some((m) => m.id === botId);
-  if (lades) {
-    const rad = await spara(context);
-    await välkomna(context, rad);
-  }
+  if (lades) await välkomnaEnGång(context);
   await next();
 });
 
