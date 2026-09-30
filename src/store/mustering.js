@@ -2,6 +2,7 @@
 // delar källa. Refs, cards, routing, membership och authority ligger kvar i Azure Table.
 // Service-nyckeln kommer ur Key Vault via app setting, aldrig ur kod.
 const { medBackoff } = require("../util/retry");
+const { dygn } = require("../util/tid");
 
 const URL = process.env.SAFESPACES_SUPABASE_URL;
 const NYCKEL = process.env.SAFESPACES_SERVICE_KEY;
@@ -36,13 +37,13 @@ async function hämtaLarm(correlationId) {
  */
 async function nästaLarmId(befintligt) {
   if (befintligt) return befintligt;
-  const dag = new Date().toISOString().slice(2, 10).replace(/-/g, "");
+  const dag = dygn();
   const dagens = await anrop(`alarms?larm_id=like.${dag}-*&select=larm_id`, {}, "nästaLarmId");
   return `${dag}-${String((dagens?.length ?? 0) + 1).padStart(3, "0")}`;
 }
 
 /** Skapar eller uppdaterar larmets huvudrad. Idempotent på correlation_id. */
-async function säkraLarm(event) {
+async function säkraLarm(event, rutt) {
   const status = event.severity === "cleared" ? "avblast" : event.severity === "prealarm" ? "forlarm" : "aktivt";
   const tidigare = await hämtaLarm(event.correlationId);
   const larmId = await nästaLarmId(tidigare?.larm_id);
@@ -51,11 +52,11 @@ async function säkraLarm(event) {
     correlation_id: event.correlationId,
     larm_id: larmId,
     // Visningsfälten skrivs på larmraden så Cloud-skivan visar exakt samma ord som Teams.
-    byggnad: event.byggnad ?? event.plats ?? event.site ?? "",
-    zon: event.zonEtikett ?? event.zone ?? "",
-    zon_nyckel: event.zone ?? "",
-    kalla: event.kalla ?? "",
-    uppsamlingsplats: event.uppsamlingsplats ?? "",
+    byggnad: event.byggnad ?? rutt?.byggnad ?? event.plats ?? event.site ?? "",
+    zon: event.zonEtikett ?? rutt?.zonEtikett ?? event.zone ?? "",
+    zon_nyckel: event.zone ?? rutt?.zonNyckel ?? "",
+    kalla: event.kalla ?? rutt?.kalla ?? "",
+    uppsamlingsplats: event.uppsamlingsplats ?? rutt?.uppsamlingsplats ?? "",
     scenario: event.scenario ?? "",
     status,
     test: event.test === true,

@@ -4,6 +4,7 @@
 // gäller tills manuset låses: behöver-hjälp-varianten, övningen och förlarmet.
 const fs = require("node:fs");
 const path = require("node:path");
+const { klocka } = require("../util/tid");
 
 const MALLAR = ["larm", "aktivt", "forlarm", "avblast", "ovning", "valkomst", "placeholder",
   "larm-mottagare", "svar-sakerhet", "svar-hjalp", "lageskort"];
@@ -111,7 +112,7 @@ function lägeskort(data, musteringUrl, hjälp = []) {
     ...data,
     pctSakra: procent(data.antalSakra, antal),
     pctUtanSvar: procent(data.antalUtanSvar, antal),
-    uppdaterat: new Date().toISOString().slice(11, 16),
+    uppdaterat: klocka(),
   }, []);
 
   // Hjälplistan: en rad per person med Öppna chatt-djuplänk när UPN finns seedad.
@@ -121,7 +122,7 @@ function lägeskort(data, musteringUrl, hjälp = []) {
     else {
       block.items = [{ type: "TextBlock", text: `**Behöver hjälp (${hjälp.length}):**`, wrap: true, color: "Attention" }];
       for (const h of hjälp) {
-        const text = `${h.namn || h.aadObjectId.slice(0, 8)} · ${h.zon || data.zon} · svarade ${String(h.tid ?? "").slice(11, 16)}`;
+        const text = `${h.namn || h.aadObjectId.slice(0, 8)} · ${h.zon || data.zon} · svarade ${klocka(h.tid)}`;
         block.items.push({
           type: "ColumnSet",
           columns: [

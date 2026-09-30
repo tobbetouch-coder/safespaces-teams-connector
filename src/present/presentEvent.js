@@ -29,7 +29,7 @@ async function presentEvent(event) {
   // Larmets huvudrad i Supabase: Teams och Cloud-skivan delar källa, och larm-id:t
   // kommer därifrån. Ett Supabase-fel får inte stoppa utlarmningen i Teams.
   let larm = null;
-  try { larm = await säkraLarm(event); }
+  try { larm = await säkraLarm(event, rutt); }
   catch (e) {
     console.error("kunde inte skriva larmet till Supabase", e.message);
     try { larm = await hämtaLarm(event.correlationId); } catch { /* larmId faller tillbaka på correlationId */ }

@@ -1,19 +1,11 @@
 // Ett ställe som binder eventet och routingraden till mallarnas fält. Delas av
 // presentEvent, lägeskortet och knapphanteraren så att samma larm alltid visar
 // samma ord — och samma ord som Cloud-skivan läser ur alarms-raden.
+const { klocka, datum, varaktighet } = require("../util/tid");
+
 const KARTA_URL = process.env.UTRYMNINGSKARTA_URL ?? "https://tower.co-ideation.com/safespaces/utrymningskarta";
 const MUSTERING_URL = process.env.MUSTERING_URL ?? "https://tower.co-ideation.com/safespaces/mustering";
 const ZON_URL = process.env.ZON_URL ?? "https://tower.co-ideation.com/safespaces/min-zon";
-
-const klocka = (v) => String(v ?? "").slice(11, 16);
-
-/** Skillnaden mellan två tidpunkter som "12 min", för Faran över-kortets larmintervall. */
-function varaktighet(från, till) {
-  const ms = new Date(till).getTime() - new Date(från).getTime();
-  if (!Number.isFinite(ms) || ms < 0) return "";
-  const min = Math.max(1, Math.round(ms / 60000));
-  return min < 60 ? `${min} min` : `${Math.floor(min / 60)} h ${min % 60} min`;
-}
 
 /**
  * @param {object} event eventet från bridgen eller simulatorn
@@ -41,8 +33,8 @@ function byggData(event, rutt, larm) {
     kartaUrl: event.kartaUrl ?? KARTA_URL,
     musteringUrl: MUSTERING_URL,
     zonUrl: ZON_URL,
-    aktiveringsdatum: nu.slice(0, 10),
+    aktiveringsdatum: datum(nu),
   };
 }
 
-module.exports = { byggData, klocka, varaktighet, KARTA_URL, MUSTERING_URL, ZON_URL };
+module.exports = { byggData, klocka, datum, varaktighet, KARTA_URL, MUSTERING_URL, ZON_URL };
