@@ -11,6 +11,14 @@ const { läge, säkraLarm, avblåsLarm, hämtaLarm, mittSvar } = require("../sto
 const { rendera, väljMall, lägeskort } = require("../cards/render");
 const { byggData, klocka } = require("./data");
 const { medBackoff } = require("../util/retry");
+const { taNyckel, slappNyckel } = require("../store/idempotens");
+
+// Mallen sager hur kortet ser ut; lasnyckeln ska vara radens status, sa att
+// larm och ovning inte kan skicka var sin uppsattning for samma overgang.
+const STATUS_FOR_MALL = {
+  larm: "aktivt", aktivt: "aktivt", ovning: "aktivt",
+  forlarm: "forlarm", avblast: "avblast",
+};
 
 const COID = process.env.MicrosoftAppTenantId;
 const EVAKUERINGSLÄGEN = ["larm", "aktivt", "ovning"];
@@ -22,7 +30,21 @@ async function presentEvent(event) {
     return { ignorerat: true, skäl: "tenant" };
   }
 
-  const mallNamn = väljMall(event);
+  // Webhooken vet exakt vilken overgang det ar och skickar mallen uttryckligen;
+  // simulatorn och knapparna later valjMall avgora som forut.
+  const mallNamn = event.mall ?? väljMall(event);
+
+  // Kortlåset ligger här, inte hos anroparna, så att ingen väg kan glömma det.
+  // Direktvägen och webhooken tävlar om samma övergång; den som får nyckeln
+  // skickar korten. Se src/store/idempotens.js.
+  //
+  // `avsandare` sätts av webhooken; saknas det är det direktvägen.
+  const lasstatus = STATUS_FOR_MALL[mallNamn] ?? mallNamn;
+  const fickNyckeln = await taNyckel(event.correlationId, lasstatus, event.avsandare ?? "direkt");
+  if (!fickNyckeln) {
+    return { ignorerat: true, skäl: "kortlås", mall: mallNamn, nya: 0, uppdaterade: 0, mottagare: [] };
+  }
+
   const rutt = await routing("COID", event.site);
   await sparaEvent(event.correlationId, event);
 
@@ -110,6 +132,13 @@ async function presentEvent(event) {
       }
       await leverera(ref, rad.rowKey, rendera("avblast", { ...data, dittSvar }, []), resultat, karta, event, "avblast");
     }
+  }
+
+  // Gick ingenting ut släpper vi nyckeln igen. Annars hade ett misslyckat
+  // försök — ingen kanalreferens, Teams nere — låst övergången för alltid, och
+  // nästa försök tystats i tron att korten redan var ute.
+  if (resultat.nya === 0 && resultat.uppdaterade === 0) {
+    await slappNyckel(event.correlationId, lasstatus);
   }
 
   if (event.test === true) console.log(`ÖVNING presentEvent ${data.larmId} mall=${mallNamn} mottagare=${resultat.mottagare.length}`);

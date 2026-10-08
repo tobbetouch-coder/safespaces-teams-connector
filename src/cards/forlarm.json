@@ -13,6 +13,6 @@
       { "title": "Källa", "value": "{{kalla}}" }
     ]},
     { "type": "TextBlock", "text": "En analyskälla har flaggat en möjlig händelse i zonen. Bekräfta för att utlösa larm, eller avfärda om det är ofarligt.", "wrap": true },
-    { "type": "TextBlock", "text": "Förlarm {{larmId}} · Väntar på bedömning", "size": "Small", "isSubtle": true, "wrap": true }
+    { "type": "TextBlock", "text": "Förlarm {{larmId}} · {{forlarmslage}}", "size": "Small", "isSubtle": true, "wrap": true }
   ]
 }

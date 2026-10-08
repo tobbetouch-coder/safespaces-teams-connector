@@ -7,11 +7,11 @@
 const { rollFörPerson, fårGöra, routing, allaPersoner, personFörAad } = require("../store/config");
 const { emitCommand } = require("../bridge/stub");
 const { statuskort, rendera, väljMall } = require("../cards/render");
-const { registrera, läge, hämtaLarm } = require("../store/mustering");
+const { registrera, läge, hämtaLarm, eskaleraLarm, avblåsLarm } = require("../store/mustering");
 const { hämtaEvent } = require("../store/cards");
 const { getByAad } = require("../store/refs");
 const { uppdateraLägeskort } = require("../present/mustering");
-const { botrad } = require("../present/presentEvent");
+const { botrad, presentEvent } = require("../present/presentEvent");
 const { byggData, klocka } = require("../present/data");
 
 const COID = process.env.MicrosoftAppTenantId;
@@ -105,11 +105,88 @@ async function hanteraExecute(context) {
 
   if (action === "muster.paminn") return påminn(correlationId);
 
+  // commands-tabellen är kvar som logg över vem som tryckte vad. Inget beror på
+  // den längre: tidigare var den hela effekten av Bekräfta, och eftersom
+  // ingenting konsumerade den hände det ingenting när man tryckte.
   try {
     await emitCommand({ tenant: "COID", site, zone, correlationId, actorEntraId: aad, action });
   } catch (err) {
-    console.error("emitCommand misslyckades", err);
-    return kortsvar(statuskort("Kunde inte skicka", "Kommandot gick inte fram. Försök igen.", d));
+    console.error("emitCommand misslyckades, fortsätter ändå", err.message);
+  }
+
+  const vem = namn || (aad ? (await personFörAad(aad))?.namn : "") || "Säkerhetsansvarig";
+
+  // --- Bekräfta: förlarmet blir fullt larm. Samma rad, samma correlation_id. ---
+  if (action === "confirm") {
+    const larmnu = await hämtaLarm(correlationId).catch(() => null);
+    if (!larmnu) {
+      return kortsvar(statuskort("Larmet hittades inte", "Det finns ingen larmrad att bekräfta.", d));
+    }
+    if (larmnu.status === "aktivt") {
+      return kortsvar(statuskort("Redan bekräftat", `${larmnu.larm_id} är redan ett aktivt larm.`, d));
+    }
+    if (larmnu.status !== "forlarm") {
+      return kortsvar(statuskort("Går inte att bekräfta", `${larmnu.larm_id} har status ${larmnu.status}.`, d));
+    }
+
+    const eskalerat = await eskaleraLarm(correlationId);
+    if (!eskalerat) {
+      // Någon annan hann före mellan läsningen och skrivningen.
+      return kortsvar(statuskort("Redan bekräftat", "Larmet hann bli aktivt under tiden.", d));
+    }
+
+    // Samma eskalering som "simulera brandlarm": larmkorten går ut till alla i
+    // zonen. Webhooken gör samma sak när triggern är på plats; kortlåset
+    // avgör vem som faktiskt skickar.
+    const sam = await sammanhang(correlationId);
+    await presentEvent({
+      correlationId,
+      tenant: "COID",
+      site: sam?.event?.site ?? site,
+      zone: eskalerat.zon_nyckel || zone,
+      byggnad: eskalerat.byggnad,
+      zonEtikett: eskalerat.zon,
+      uppsamlingsplats: eskalerat.uppsamlingsplats,
+      kalla: eskalerat.kalla,
+      scenario: eskalerat.scenario,
+      severity: "active",
+      test: eskalerat.test === true,
+      occurredAt: eskalerat.utlost_at,
+      mall: eskalerat.test === true ? "ovning" : "larm",
+      instruktion: "Lämna byggnaden via närmaste utrymningsväg och gå till uppsamlingsplatsen.",
+      avsandare: "knapp:confirm",
+    }).catch((e) => console.error("eskaleringens kort gick inte ut", e.message));
+
+    // Den som tryckte får förlarmkortet tillbaka, nu med vem och när.
+    return kortsvar(rendera("forlarm", {
+      ...(sam?.data ?? { correlationId }),
+      forlarmslage: `Bekräftat av ${vem} ${klocka(new Date().toISOString())}`,
+    }, []));
+  }
+
+  // --- Avfärda: förlarmet var ofarligt. Avblåst, men INGET faran över. ---
+  if (action === "dismiss") {
+    const larmnu = await hämtaLarm(correlationId).catch(() => null);
+    if (!larmnu) {
+      return kortsvar(statuskort("Larmet hittades inte", "Det finns ingen larmrad att avfärda.", d));
+    }
+    if (larmnu.status !== "forlarm") {
+      return kortsvar(statuskort("Går inte att avfärda",
+        larmnu.status === "aktivt"
+          ? `${larmnu.larm_id} är ett aktivt larm. Det avfärdas inte — det blåses av.`
+          : `${larmnu.larm_id} har status ${larmnu.status}.`, d));
+    }
+
+    // Ett avfärdat förlarm ger inget FARAN ÖVER-kort. Ingen har blivit utrymd,
+    // och ett "faran över" på något som aldrig var farligt lär folk att
+    // ignorera nästa.
+    await avblåsLarm(correlationId, vem);
+
+    const sam = await sammanhang(correlationId);
+    return kortsvar(rendera("forlarm", {
+      ...(sam?.data ?? { correlationId }),
+      forlarmslage: `Avfärdat av ${vem} ${klocka(new Date().toISOString())}`,
+    }, []));
   }
 
   return kortsvar(statuskort(

@@ -17,23 +17,33 @@ const SITE = process.env.DEMO_SITE ?? "noname-stockholm";
 const ZON = process.env.DEMO_ZON ?? "lobby";
 
 // Larmvarianterna. `clear` ligger med men behandlas särskilt i tolka().
+//
+// `scenario` är ett DATAFÄLT med låsta värden ur KONTRAKT.md avsnitt 2:
+// brand · inrymning · utrymning · annat, i gemener. Demo-plats 1 (Noname
+// Stockholm) är M1 = brand. Site Connect skickar samma ord genom bryggan, så
+// tavlan, Teams och Pi-payloaden säger samma sak om samma larm.
+//
+// Tidigare stod här "Utrymning", "Övning" och "Förlarm och bekräftelse" — det
+// är beskrivningar av läget, inte scenarier, och de skrevs rakt in i alarms.
+// Läget framgår i stället av severity och test, som styr vilken mall som väljs.
+// Versaliseringen på kortet görs av util/etiketter.js.
 const VARIANTER = {
   brandlarm: {
-    scenario: "Utrymning", severity: "active", test: false,
+    scenario: "brand", severity: "active", test: false,
     ingress: "Lämna byggnaden nu.",
     instruktion: "Utrym via närmaste utrymningsväg och gå till återsamlingsplatsen. Svara nedan när du är i säkerhet.",
   },
   forlarm: {
-    scenario: "Förlarm och bekräftelse", severity: "prealarm", test: false,
+    scenario: "brand", severity: "prealarm", test: false,
     instruktion: "Kamerazonen har gett förlarm. Bekräfta om det är skarpt, avfärda om det är falsklarm.",
   },
   trigger: {
-    scenario: "Utrymning", severity: "active", test: false,
+    scenario: "brand", severity: "active", test: false,
     instruktion: "Lämna byggnaden via närmaste utrymningsväg.",
   },
   clear: { severity: "cleared", test: false, rollSomAgerade: "Säkerhetsansvarig" },
   ovning: {
-    scenario: "Övning", severity: "active", test: true,
+    scenario: "brand", severity: "active", test: true,
     instruktion: "Detta är en övning. Följ ordinarie utrymningsrutin.",
   },
 };

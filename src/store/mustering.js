@@ -135,6 +135,39 @@ async function säkraLarm(event, rutt) {
   return { ...rad, utlost_at: rad.utlost_at ?? tidigare?.utlost_at };
 }
 
+/** Sätter larm_id på en rad som saknar det — bryggans rader gör det. */
+async function sattLarmId(correlationId, larmId) {
+  await anrop(`alarms?correlation_id=eq.${encodeURIComponent(correlationId)}&larm_id=is.null`, {
+    method: "PATCH",
+    headers: { Prefer: "return=minimal" },
+    body: JSON.stringify({ larm_id: larmId, uppdaterad: new Date().toISOString() }),
+  }, "sattLarmId");
+}
+
+/**
+ * Bekräftelsen: förlarm blir fullt larm. PATCH, aldrig en ny rad — förlarm och
+ * larm är samma incident med samma correlation_id (KONTRAKT.md avsnitt 4).
+ *
+ * Villkoret `status=eq.forlarm` gör den säker att köra två gånger: andra
+ * trycket träffar ingen rad och returnerar null i stället för att skriva om ett
+ * larm som redan är aktivt.
+ *
+ * Vem som bekräftade sparas INTE i tabellen — det finns ingen kolumn för det,
+ * och vi lägger inte till en. Namnet visas bara på kortet.
+ */
+async function eskaleraLarm(correlationId) {
+  const rader = await anrop(
+    `alarms?correlation_id=eq.${encodeURIComponent(correlationId)}&status=eq.forlarm`,
+    {
+      method: "PATCH",
+      headers: { Prefer: "return=representation" },
+      body: JSON.stringify({ status: "aktivt", uppdaterad: new Date().toISOString() }),
+    },
+    "eskaleraLarm",
+  );
+  return rader?.[0] ?? null;
+}
+
 /** status: "safe" | "help". Samma person som svarar igen skriver över sitt eget svar. */
 async function registrera(correlationId, aadObjectId, status, namn, zon, upn) {
   const rad = {
@@ -187,5 +220,6 @@ async function pinga() {
 
 module.exports = {
   säkraLarm, hämtaLarm, aktivtLarm, avblåsLarm,
+  nästaLarmId, sattLarmId, eskaleraLarm,
   registrera, svar, mittSvar, läge, pinga,
 };
