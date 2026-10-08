@@ -12,8 +12,10 @@ const { läge } = require("../store/mustering");
 const { byggData } = require("../present/data");
 
 // Simulatorn: ett correlationId per körning, så att in-place-uppdateringen syns.
-const SITE = process.env.DEMO_SITE ?? "hus-3-uppsala";
-const ZON = process.env.DEMO_ZON ?? "plan-2-norr";
+// Demo-kund Noname. Måste matcha SITE/zonNyckel i scripts/seed.js, annars
+// hittar routing-uppslaget ingen rad.
+const SITE = process.env.DEMO_SITE ?? "noname-stockholm";
+const ZON = process.env.DEMO_ZON ?? "lobby";
 
 class SafeSpacesBot extends TeamsActivityHandler {
   constructor() {

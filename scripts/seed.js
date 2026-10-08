@@ -27,15 +27,20 @@ const MEDLEMMAR = [
   { aadObjectId: "af975cb7-7fbd-4c73-8466-933bd2542d9a", role: "medarbetare", upn: "demo.medarbetare@co-ideation.com", namn: "Medarbetare" },
 ];
 
-const SITE = process.env.SITE ?? "hus-3-uppsala";
+// SITE är rowKey i routing-tabellen. Ändras den måste seed.js köras om —
+// annars slår boten upp en site som inte finns och kortet går aldrig ut.
+const SITE = process.env.SITE ?? "noname-stockholm";
 
-// Demons kuliss. Samma ord skrivs på alarms-raden i Supabase, så Cloud-skivan och
-// Teams visar identisk text. Skolscenariots värden kommer med det manuset.
+// Demons kuliss. Demo-kund Noname, beslut 8 okt 2026. Värdena är hämtade ur
+// MQTT-kontraktets avsnitt 5 (plats 1, Noname Stockholm, zon 01 Lobby = Pi 1),
+// så Site Connect, bryggan, tavlan och Teams säger exakt samma ord.
+// Samma ord skrivs på alarms-raden i Supabase. Skolscenariots värden
+// (noname-school / Main Hall, inrymning) kommer med det manuset.
 const PLATS = {
-  byggnad: "Hus 3, Uppsala",
-  zonEtikett: "Plan 2 · Norr",
-  zonNyckel: process.env.DEMO_ZON ?? "plan-2-norr",
-  uppsamlingsplats: "Parkering P2, nordöstra hörnet",
+  byggnad: "Noname Stockholm",
+  zonEtikett: "Lobby",
+  zonNyckel: process.env.DEMO_ZON ?? "lobby",
+  uppsamlingsplats: "Car park · North gate",
   kalla: "Brandlarmcentral",
 };
 

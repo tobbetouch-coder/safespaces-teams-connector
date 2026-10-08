@@ -131,7 +131,7 @@ async function påminn(correlationId) {
 /** Välkomstkortets testlarm: ett övningskort i den egna chatten, aldrig i kanalen. */
 async function testlarm(context, aad) {
   const p = aad ? await personFörAad(aad) : null;
-  const site = process.env.DEMO_SITE ?? "hus-3-uppsala";
+  const site = process.env.DEMO_SITE ?? "noname-stockholm";
   const rutt = await routing("COID", site);
   const data = byggData({
     correlationId: `test-${Date.now()}`, site, zone: rutt?.zonNyckel, test: true,
