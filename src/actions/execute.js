@@ -50,6 +50,20 @@ async function hanteraExecute(context) {
   // --- Musteringssvar: öppna för alla i zonen ---
   if (action === "muster.safe" || action === "muster.help") {
     const status = action === "muster.safe" ? "safe" : "help";
+
+    // Musteringsläget stängs när larmet blåses av. Ett tryck på ett gammalt
+    // kort efter Faran över ska inte skriva en ny rad i musteringen — då hade
+    // lägeskortet och tavlan börjat röra sig igen för ett avslutat larm.
+    // Korten byts ut vid avblåsning, men ett kort som inte hann uppdateras
+    // ligger kvar i chatten och går att trycka på.
+    const larmnu = await hämtaLarm(correlationId).catch(() => null);
+    if (larmnu && larmnu.status === "avblast") {
+      return kortsvar(statuskort(
+        "Larmet är avblåst",
+        `${larmnu.larm_id} blåstes av ${klocka(larmnu.avblast_at)}. Musteringen är stängd och ditt svar registrerades inte.`,
+        d));
+    }
+
     const p = aad ? await personFörAad(aad) : null;
     const sam = await sammanhang(correlationId);
     const rad = await registrera(correlationId, aad, status, namn || p?.namn, p?.zon || sam?.data.zon || zone, p?.upn);

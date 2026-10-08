@@ -31,6 +31,69 @@ async function hämtaLarm(correlationId) {
   return rader?.[0] ?? null;
 }
 
+// Statusar som räknas som "står kvar". Förlarmet hör med: har kontakt B aldrig
+// slutit är avblåsningen det enda som släcker det. Samma lista som bryggans
+// OSLACKTA i edge/site-connect-bridge/supabase_klient.py.
+const OSLÄCKTA = "status=in.(aktivt,forlarm)";
+
+/**
+ * Det öppna larmet i zonen, nyaste först. Grunden för två regler:
+ *
+ *   ett aktivt larm per zon — ett nytt trigger återanvänder id:t och
+ *   uppdaterar raden i stället för att lägga en andra bredvid
+ *
+ *   avblåsning hittar sitt larm — clear behöver inte bära något id
+ *
+ * Matchningen går på `zon_nyckel`, aldrig på visningsnamnet. Det är läxan från
+ * 7 oktober: `Plan 2 · Norr` och `plan-2-norr` är inte samma sträng, och den
+ * som matchar på visningsnamnet hittar inte larmet.
+ *
+ * `byggnad` utelämnas när anroparen inte vet den; då räcker zonen.
+ */
+async function aktivtLarm(byggnad, zonNyckel) {
+  if (!zonNyckel) return null;
+  const q = [
+    `alarms?zon_nyckel=eq.${encodeURIComponent(zonNyckel)}`,
+    byggnad ? `byggnad=eq.${encodeURIComponent(byggnad)}` : null,
+    OSLÄCKTA,
+    "select=*",
+    "order=utlost_at.desc",
+    "limit=1",
+  ].filter(Boolean).join("&");
+  const rader = await anrop(q, {}, "aktivtLarm");
+  return rader?.[0] ?? null;
+}
+
+/**
+ * Blåser av ett befintligt larm. PATCH, inte upsert.
+ *
+ * Rör bara status, avblast_at, avblast_av och uppdaterad. `scenario`, `larm_id`
+ * och `utlost_at` lämnas i fred — en avblåsning är inte en ny händelse, den är
+ * slutet på den befintliga. Tidigare skrev den här vägen en ny rad med
+ * scenario "Faran över" och ett eget larm-id, vilket gav ett spöklarm på tavlan
+ * medan de riktiga stod kvar röda.
+ *
+ * Returnerar den uppdaterade raden, eller null om ingen rad träffades.
+ */
+async function avblåsLarm(correlationId, avblastAv) {
+  const nu = new Date().toISOString();
+  const rader = await anrop(
+    `alarms?correlation_id=eq.${encodeURIComponent(correlationId)}&${OSLÄCKTA}`,
+    {
+      method: "PATCH",
+      headers: { Prefer: "return=representation" },
+      body: JSON.stringify({
+        status: "avblast",
+        avblast_av: avblastAv || "",
+        avblast_at: nu,
+        uppdaterad: nu,
+      }),
+    },
+    "avblåsLarm",
+  );
+  return rader?.[0] ?? null;
+}
+
 /**
  * Larm-id i mock-upens format YYMMDD-NNN. Numret är antalet larm samma dygn + 1.
  * Ett befintligt larm behåller sitt nummer — säkraLarm körs om vid varje event.
@@ -122,4 +185,7 @@ async function pinga() {
   return { ok: true, ms: Date.now() - t0 };
 }
 
-module.exports = { säkraLarm, hämtaLarm, registrera, svar, mittSvar, läge, pinga };
+module.exports = {
+  säkraLarm, hämtaLarm, aktivtLarm, avblåsLarm,
+  registrera, svar, mittSvar, läge, pinga,
+};

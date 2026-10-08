@@ -4,6 +4,8 @@ local.settings.json
 dist/
 *.log
 deploy.zip
+# Byggartefakt. Aterskapas med: npm ci --omit=dev && npm run paketera
+deploy-flex.zip
 
 # Supabase-CLI:ns lokala skrapfiler.
 supabase/.temp/

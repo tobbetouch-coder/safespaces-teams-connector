@@ -6,7 +6,8 @@
   "main": "src/functions/*.js",
   "scripts": {
     "start": "func start",
-    "deploy": "az functionapp deployment source config-zip -g rg-safespaces-demo -n func-safespaces-flex --src deploy-flex.zip --build-remote true"
+    "deploy": "az functionapp deployment source config-zip -g rg-safespaces-demo -n func-safespaces-flex --src deploy-flex.zip",
+    "paketera": "node scripts/paketera.js"
   },
   "dependencies": {
     "@azure/functions": "^4.5.1",

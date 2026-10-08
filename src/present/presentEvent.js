@@ -7,7 +7,7 @@ const { adapter } = require("../bot/adapter");
 const { routing, rollerSomFår, personerIRoller, allaPersoner } = require("../store/config");
 const { getByAad, getByChannel } = require("../store/refs");
 const { hämtaFörKorrelation, spara, sparaEvent } = require("../store/cards");
-const { läge, säkraLarm, hämtaLarm, mittSvar } = require("../store/mustering");
+const { läge, säkraLarm, avblåsLarm, hämtaLarm, mittSvar } = require("../store/mustering");
 const { rendera, väljMall, lägeskort } = require("../cards/render");
 const { byggData, klocka } = require("./data");
 const { medBackoff } = require("../util/retry");
@@ -28,11 +28,35 @@ async function presentEvent(event) {
 
   // Larmets huvudrad i Supabase: Teams och Cloud-skivan delar källa, och larm-id:t
   // kommer därifrån. Ett Supabase-fel får inte stoppa utlarmningen i Teams.
+  //
+  // Avblåsningen går en annan väg än allt annat. Den SKAPAR inget — den stänger
+  // det larm som redan finns, med PATCH. Tidigare gick även clear genom
+  // säkraLarm, som upsertar: då fick avblåsningen en egen rad med scenario
+  // "Faran över" och ett eget larm-id, medan de riktiga larmen stod kvar röda
+  // på tavlan. Kontraktet avsnitt 2 är tydligt — clear är slutet på en incident,
+  // inte en ny händelse.
   let larm = null;
-  try { larm = await säkraLarm(event, rutt); }
-  catch (e) {
-    console.error("kunde inte skriva larmet till Supabase", e.message);
-    try { larm = await hämtaLarm(event.correlationId); } catch { /* larmId faller tillbaka på correlationId */ }
+  if (mallNamn === "avblast") {
+    try {
+      larm = await avblåsLarm(event.correlationId, event.rollSomAgerade);
+      if (!larm) {
+        // Ingen osläckt rad träffades: antingen redan avblåst, eller ett id som
+        // aldrig fanns. Korten ska ändå uppdateras, så vi hämtar raden för
+        // larm-id:ts skull och går vidare.
+        larm = await hämtaLarm(event.correlationId);
+        console.warn(`avblåsning träffade ingen osläckt rad för ${event.correlationId}`
+          + (larm ? ` — raden har status ${larm.status}` : " — ingen rad alls"));
+      }
+    } catch (e) {
+      console.error("kunde inte blåsa av larmet i Supabase", e.message);
+      try { larm = await hämtaLarm(event.correlationId); } catch { /* larmId faller tillbaka */ }
+    }
+  } else {
+    try { larm = await säkraLarm(event, rutt); }
+    catch (e) {
+      console.error("kunde inte skriva larmet till Supabase", e.message);
+      try { larm = await hämtaLarm(event.correlationId); } catch { /* larmId faller tillbaka på correlationId */ }
+    }
   }
 
   const data = byggData(event, rutt, larm);

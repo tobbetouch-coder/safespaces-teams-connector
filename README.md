@@ -32,7 +32,28 @@ Vault-referens som löses med den användartilldelade identiteten.
 
 ## Deploy
 
+Den levande appen är **`func-safespaces-flex`** (Flex Consumption). Den har
+bot-inställningarna och Key Vault-referenserna. `func-safespaces-fe85f8` är en
+rest från uppsättningen och svarar inte — deploya inte dit.
+
 ```
-npm install
-func azure functionapp publish func-safespaces-fe85f8 --build remote
+npm ci --omit=dev
+npm run deploy
 ```
+
+**Paketet ska innehålla `node_modules`.** Fjärrbygget (`--build-remote true`)
+användes tidigare och gav den 8 oktober en lyckad deploy som ändå installerade
+noll beroenden: varje `require` föll, noll funktioner registrerades och
+`/api/messages` svarade 404 i stället för att ta emot Teams-trafik. Appen såg
+frisk ut i Azure hela tiden. Vi packar beroendena själva i stället.
+
+Verifiera efter varje deploy — en lyckad deploy betyder inte att appen kör:
+
+```
+curl -H "x-functions-key: $MASTER" \
+  https://func-safespaces-flex.azurewebsites.net/admin/functions
+```
+
+Listan ska innehålla `health-supabase` och `messages`. Är den tom laddade inte
+värden koden. `GET /api/health/supabase?code=$KEY` ska svara
+`{"supabase":"nåbar","ok":true,...}`.
