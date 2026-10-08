@@ -19,8 +19,12 @@ const ROLLER = [
 // Statiskt för demon: ingen live-expansion mot Graph på mässgolvet.
 // UPN:erna lästa ur Entra 2026-09-30. De driver hjälplistans Öppna chatt-djuplänk
 // på lägeskortet; utan UPN faller knappen bort och raden visas ändå.
+//
+// namn är visningsnamnet i hjälplistan. Säkerhetsansvarig heter Maria Ek, samma
+// person som tavlan visar uppe till höger — Teams och tavlan ska säga samma namn.
+// Övriga är kvar på rollnamnet; demon namnger bara den rollen.
 const MEDLEMMAR = [
-  { aadObjectId: "a533691c-f08d-42a5-9647-4a65222f9b8d", role: "sakerhetsansvarig", upn: "demo.sakerhetsansvarig@co-ideation.com", namn: "Säkerhetsansvarig" },
+  { aadObjectId: "a533691c-f08d-42a5-9647-4a65222f9b8d", role: "sakerhetsansvarig", upn: "demo.sakerhetsansvarig@co-ideation.com", namn: "Maria Ek" },
   { aadObjectId: "7d79549d-6698-45ca-a75c-c65fdc78aa38", role: "platschef", upn: "demo.platschef@co-ideation.com", namn: "Platschef" },
   { aadObjectId: "29f0ac93-aa28-4587-9061-0122f4b0785d", role: "operator", upn: "demo.operator@co-ideation.com", namn: "Larmoperatör" },
   { aadObjectId: "abf263e5-293b-4a3f-8211-b0171aab55a9", role: "vaktare", upn: "demo.vaktare@co-ideation.com", namn: "Väktare" },
