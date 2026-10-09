@@ -85,20 +85,22 @@ app.http("larm-handelse", {
 
     // Routing på site-slugen ur byggnaden, enligt KONTRAKT.md avsnitt 1:
     // "Noname Stockholm" -> "noname-stockholm".
-    const site = slugify(rad.byggnad);
-    const rutt = await routing("COID", site);
-    if (!rutt) {
-      context.log(`larm-handelse: ingen routingrad för "${site}" (byggnad "${rad.byggnad}"), hoppar över`);
-      return { status: 200, jsonBody: { hoppadeOver: `ingen routing för ${site}` } };
-    }
-
-    // Bryggans rader har inget larm_id — det numret är Teams och tavlans
-    // gemensamma referens, så det tilldelas här, ur samma dygnsserie.
+    // Bryggans rader har inget larm_id. Numret tilldelas FÖRE routingen, och
+    // det är med flit: numret identifierar incidenten, och tavlan visar det.
+    // Ett larm från en anläggning vi inte har routing för ska synas på tavlan
+    // med ett riktigt id, även om ingen Teams-kanal kan ta emot korten.
     let larmId = rad.larm_id;
     if (!larmId) {
       larmId = await nästaLarmId(null);
       await sattLarmId(cid, larmId);
       context.log(`larm-handelse: ${cid} saknade larm_id, tilldelade ${larmId}`);
+    }
+
+    const site = slugify(rad.byggnad);
+    const rutt = await routing("COID", site);
+    if (!rutt) {
+      context.log(`larm-handelse: ingen routingrad för "${site}" (byggnad "${rad.byggnad}"), inga kort skickade`);
+      return { status: 200, jsonBody: { larmId, hoppadeOver: `ingen routing för ${site}` } };
     }
 
     const event = {

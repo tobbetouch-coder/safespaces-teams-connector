@@ -3,6 +3,7 @@
 // Service-nyckeln kommer ur Key Vault via app setting, aldrig ur kod.
 const { medBackoff } = require("../util/retry");
 const { dygn } = require("../util/tid");
+const { nastaNummer } = require("./larmnummer");
 
 const URL = process.env.SAFESPACES_SUPABASE_URL;
 const NYCKEL = process.env.SAFESPACES_SERVICE_KEY;
@@ -95,14 +96,33 @@ async function avblåsLarm(correlationId, avblastAv) {
 }
 
 /**
- * Larm-id i mock-upens format YYMMDD-NNN. Numret är antalet larm samma dygn + 1.
+ * Larm-id i mock-upens format YYMMDD-NNN.
+ *
+ * Numret togs förut som antalet rader samma dygn + 1. Då bar två olika
+ * incidenter samma id så fort en rad raderades. Nu i två led:
+ *
+ *   1. högsta numret som finns i alarms samma dygn — golvet
+ *   2. högvattenmärket i Table Storage, som bara kan gå uppåt
+ *
+ * Det första ensamt räcker inte: raderas den *senaste* raden sjunker maxvärdet
+ * och numret återanvänds ändå. Det var precis vad som hände 8 oktober med
+ * 261008-007. Märket håller linjen; databasen är golvet om märket tappas.
+ *
+ * Numret jämförs som tal, inte text. Lexikalt sorterar "1000" före "999", så
+ * ett dygn med fler än 999 larm hade annars börjat om.
+ *
  * Ett befintligt larm behåller sitt nummer — säkraLarm körs om vid varje event.
  */
 async function nästaLarmId(befintligt) {
   if (befintligt) return befintligt;
   const dag = dygn();
   const dagens = await anrop(`alarms?larm_id=like.${dag}-*&select=larm_id`, {}, "nästaLarmId");
-  return `${dag}-${String((dagens?.length ?? 0) + 1).padStart(3, "0")}`;
+  const golv = (dagens ?? []).reduce((max, rad) => {
+    const n = Number.parseInt(String(rad.larm_id ?? "").slice(dag.length + 1), 10);
+    return Number.isFinite(n) && n > max ? n : max;
+  }, 0);
+  const nummer = await nastaNummer(dag, golv);
+  return `${dag}-${String(nummer).padStart(3, "0")}`;
 }
 
 /** Skapar eller uppdaterar larmets huvudrad. Idempotent på correlation_id. */
