@@ -81,6 +81,21 @@ async function kanalFrånRefs() {
   }
   console.log(`  membership: ${MEDLEMMAR.length} personer, ${MEDLEMMAR.filter((m) => m.upn).length} med UPN`);
 
+  // Rader som inte står i MEDLEMMAR — handpåsatta testställningar — rättas till
+  // demons zon. Annars blir de kvar på gamla namn: efter bytet till Noname låg
+  // en rad kvar på "Plan 2 · Norr" och räknades som en sjätte mottagare i en
+  // zon som inte finns. Zonen styr vad musteringsraden skrivs med.
+  const kanda = new Set(MEDLEMMAR.map((m) => m.aadObjectId));
+  let rattade = 0;
+  for await (const rad of klient("membership").listEntities()) {
+    if (kanda.has(rad.rowKey) || rad.zon === PLATS.zonEtikett) continue;
+    console.log(`  rättar zon på ${rad.namn ?? rad.rowKey}: "${rad.zon}" → "${PLATS.zonEtikett}"`);
+    await klient("membership").upsertEntity(
+      { partitionKey: rad.partitionKey, rowKey: rad.rowKey, zon: PLATS.zonEtikett }, "Merge");
+    rattade++;
+  }
+  if (rattade) console.log(`  ${rattade} extern rad(er) rättade`);
+
   for (const t of ["routing", "roles", "membership", "authority"]) {
     let n = 0;
     for await (const _ of klient(t).listEntities()) n++;

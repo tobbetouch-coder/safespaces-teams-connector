@@ -93,7 +93,11 @@ async function presentEvent(event) {
     for (const p of personer) {
       const ref = await getByAad(p.aadObjectId);
       if (!ref) { console.warn(`presentEvent: ingen referens för ${p.aadObjectId}`); continue; }
-      await leverera(ref, p.aadObjectId, rendera(mall, { ...data, zon: p.zon || data.zon }, []), resultat, karta, event, mall);
+      // Larmets zon, inte mottagarens. Kortet beskriver HÄNDELSEN: brinner det i
+      // Lobby ska alla läsa "Lobby", även den som själv hör till en annan zon.
+      // Tidigare skrev medlemsradens zon över larmets, så kortet kunde säga
+      // "Plan 2 · Norr" om ett larm i Lobby.
+      await leverera(ref, p.aadObjectId, rendera(mall, data, []), resultat, karta, event, mall);
     }
     // Kanalen är ledningens vy: en bot-rad första gången, sedan lägeskortet.
     if (rutt?.channelId) {

@@ -72,7 +72,8 @@ async function hanteraExecute(context) {
     uppdateraLägeskort(correlationId).catch((e) => console.error("lägeskortet kunde inte uppdateras", e));
     // Manuset vill ha tack-texten som egen bot-rad under kortet, inte inuti det.
     if (status === "safe") context.sendActivity(TACK).catch((e) => console.error("tack-raden gick inte fram", e));
-    const data = { ...(sam?.data ?? { correlationId }), svarstid: klocka(rad.tid), zon: p?.zon || sam?.data.zon || zone };
+    // Larmets zon pa kortet; personens egen zon sparas i musteringsraden ovan.
+    const data = { ...(sam?.data ?? { correlationId }), svarstid: klocka(rad.tid) };
     return kortsvar(rendera(status === "safe" ? "svar-sakerhet" : "svar-hjalp", data, []));
   }
 
@@ -80,9 +81,8 @@ async function hanteraExecute(context) {
   if (action === "muster.andra") {
     const sam = await sammanhang(correlationId);
     if (!sam) return kortsvar(statuskort("Larmet hittades inte", "Det går inte att ändra svaret på ett larm som inte längre finns.", d));
-    const p = aad ? await personFörAad(aad) : null;
     const mall = väljMall(sam.event) === "ovning" ? "ovning" : "larm-mottagare";
-    return kortsvar(rendera(mall, { ...sam.data, zon: p?.zon || sam.data.zon }, []));
+    return kortsvar(rendera(mall, sam.data, []));
   }
 
   if (action === "muster.refresh") {
