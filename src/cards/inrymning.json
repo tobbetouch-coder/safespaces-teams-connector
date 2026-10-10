@@ -13,7 +13,7 @@
       { "title": "Källa", "value": "{{kalla}}" }
     ]},
     { "type": "TextBlock", "text": "Gå INTE ut. Ta dig till närmaste låsbara rum. Lås och barrikadera dörren. Släck ljuset, sätt telefonen på ljudlös, håll dig undan fönster och var tyst. Ring 112 när du är i säkerhet.", "wrap": true },
-    { "type": "TextBlock", "text": "Larm {{larmId}} · Skickat till alla i {{byggnad}}", "size": "Small", "isSubtle": true, "wrap": true }
+    { "type": "TextBlock", "text": "Larm {{larmId}} · Skickat till alla i {{byggnad}}{{bekraftelse}}", "size": "Small", "isSubtle": true, "wrap": true }
   ],
   "actions": [
     { "type": "Action.Execute", "title": "Jag är i säkerhet", "style": "positive", "verb": "muster.safe", "data": { "correlationId": "{{correlationId}}", "zone": "{{zonNyckel}}", "site": "{{site}}", "action": "muster.safe" } },

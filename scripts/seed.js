@@ -22,13 +22,19 @@ const ROLLER = [
 //
 // namn är visningsnamnet i hjälplistan. Säkerhetsansvarig heter Maria Ek, samma
 // person som tavlan visar uppe till höger — Teams och tavlan ska säga samma namn.
-// Övriga är kvar på rollnamnet; demon namnger bara den rollen.
+//
+// Mässuppsättningen 10 okt: bara riktiga personer. De fyra generiska raderna
+// (Platschef, Larmoperatör, Väktare, Medarbetare) är borttagna ur tabellen —
+// de räknades som mottagare på lägeskortet utan att någon faktiskt fick kortet.
+// De står inte kvar här heller, annars hade nästa seed-körning återskapat dem.
+//
+// Per (offices-2f) och Mats (lobby) ska in men saknar Entra-uppgifter. Lägg
+// till dem med aadObjectId, upn och zon när de är kända — aadObjectId är
+// rowKey och det boten matchar på, så den går inte att gissa.
 const MEDLEMMAR = [
   { aadObjectId: "a533691c-f08d-42a5-9647-4a65222f9b8d", role: "sakerhetsansvarig", upn: "demo.sakerhetsansvarig@co-ideation.com", namn: "Maria Ek" },
-  { aadObjectId: "7d79549d-6698-45ca-a75c-c65fdc78aa38", role: "platschef", upn: "demo.platschef@co-ideation.com", namn: "Platschef" },
-  { aadObjectId: "29f0ac93-aa28-4587-9061-0122f4b0785d", role: "operator", upn: "demo.operator@co-ideation.com", namn: "Larmoperatör" },
-  { aadObjectId: "abf263e5-293b-4a3f-8211-b0171aab55a9", role: "vaktare", upn: "demo.vaktare@co-ideation.com", namn: "Väktare" },
-  { aadObjectId: "af975cb7-7fbd-4c73-8466-933bd2542d9a", role: "medarbetare", upn: "demo.medarbetare@co-ideation.com", namn: "Medarbetare" },
+  // { aadObjectId: "<Entra-id>", role: "vaktare", upn: "per@...", namn: "Per", zon: "Offices 2F" },
+  // { aadObjectId: "<Entra-id>", role: "vaktare", upn: "mats@...", namn: "Mats", zon: "Lobby" },
 ];
 
 // SITE är rowKey i routing-tabellen. Ändras den måste seed.js köras om —
@@ -77,7 +83,9 @@ async function kanalFrånRefs() {
   console.log(`  roles och authority: ${ROLLER.length} roller`);
 
   for (const m of MEDLEMMAR) {
-    await klient("membership").upsertEntity({ partitionKey: "COID", rowKey: m.aadObjectId, role: m.role, upn: m.upn, namn: m.namn, zon: PLATS.zonEtikett }, "Merge");
+    // Zonen per medlem nar den ar satt. Per hor till Offices 2F, inte Lobby —
+    // utan det hade seed stampat over honom vid varje korning.
+    await klient("membership").upsertEntity({ partitionKey: "COID", rowKey: m.aadObjectId, role: m.role, upn: m.upn, namn: m.namn, zon: m.zon ?? PLATS.zonEtikett }, "Merge");
   }
   console.log(`  membership: ${MEDLEMMAR.length} personer, ${MEDLEMMAR.filter((m) => m.upn).length} med UPN`);
 

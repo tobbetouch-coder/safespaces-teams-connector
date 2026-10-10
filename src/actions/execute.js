@@ -139,7 +139,7 @@ async function hanteraExecute(context) {
     // zonen. Webhooken gör samma sak när triggern är på plats; kortlåset
     // avgör vem som faktiskt skickar.
     const sam = await sammanhang(correlationId);
-    await presentEvent({
+    const larmevent = {
       correlationId,
       tenant: "COID",
       site: sam?.event?.site ?? site,
@@ -157,12 +157,26 @@ async function hanteraExecute(context) {
       // genom eskaleringen.
       instruktion: "Lämna byggnaden via närmaste utrymningsväg och gå till uppsamlingsplatsen.",
       avsandare: "knapp:confirm",
-    }).catch((e) => console.error("eskaleringens kort gick inte ut", e.message));
+    };
+    await presentEvent(larmevent)
+      .catch((e) => console.error("eskaleringens kort gick inte ut", e.message));
 
-    // Den som tryckte får förlarmkortet tillbaka, nu med vem och när.
-    return kortsvar(rendera("forlarm", {
-      ...(sam?.data ?? { correlationId }),
-      forlarmslage: `Bekräftat av ${vem} ${klocka(new Date().toISOString())}`,
+    // Den som tryckte får SAMMA kort som alla andra — BRANDLARM eller
+    // INRYMNING — med vem som bekräftade i sidfoten.
+    //
+    // Förut svarade vi med förlarmkortet märkt "Bekräftat av …". Då stod den
+    // som bekräftat kvar utan utrymningsinstruktion, i samma byggnad som alla
+    // andra fick den. Svaret på trycket landar dessutom sist och skrev över
+    // eskaleringen presentEvent just gjort.
+    //
+    // Nu spelar ordningen ingen roll: båda skrivningarna ger samma kort, och
+    // skulle sidfotsraden förloras i en kapplöpning är det bara den raden som
+    // försvinner, aldrig larmet.
+    const larmmall = väljMall(larmevent);
+    const mottagarmall = { ovning: "ovning", inrymning: "inrymning" }[larmmall] ?? "larm-mottagare";
+    return kortsvar(rendera(mottagarmall, {
+      ...byggData(larmevent, sam?.rutt ?? null, { larm_id: eskalerat.larm_id, utlost_at: eskalerat.utlost_at }),
+      bekraftelse: ` · Bekräftat av ${vem} ${klocka(new Date().toISOString())}`,
     }, []));
   }
 

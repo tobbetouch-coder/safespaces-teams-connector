@@ -67,6 +67,9 @@ function byggData(event, rutt, larm) {
     // Förlarmkortets sista rad. "Väntar på bedömning" tills någon tryckt,
     // sedan "Bekräftat av Maria Ek 14:02", "Avfärdat" eller "Eskalerat".
     forlarmslage: event.forlarmslage ?? "Väntar på bedömning",
+    // Sidfotsraden pa larmkortet nar nagon bekraftat. Tom i utskicket till
+    // alla; satt bara i svaret till den som tryckte.
+    bekraftelse: event.bekraftelse ?? "",
     // Scenarioberoende korttexter. Ett brandlarm och en inrymning är motsatta
     // instruktioner — det ena säger gå ut, det andra stanna inne och lås.
     ...scenariotexter(event.scenario, event.zonEtikett ?? rutt?.zonEtikett ?? event.zone ?? ""),
