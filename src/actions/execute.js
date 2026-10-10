@@ -152,7 +152,9 @@ async function hanteraExecute(context) {
       severity: "active",
       test: eskalerat.test === true,
       occurredAt: eskalerat.utlost_at,
-      mall: eskalerat.test === true ? "ovning" : "larm",
+      // Ingen mall anges: valjMall laser scenariot, sa en inrymning far
+      // INRYMNING-kortet och ett brandlarm BRANDLARM. Scenariot bevaras
+      // genom eskaleringen.
       instruktion: "Lämna byggnaden via närmaste utrymningsväg och gå till uppsamlingsplatsen.",
       avsandare: "knapp:confirm",
     }).catch((e) => console.error("eskaleringens kort gick inte ut", e.message));

@@ -18,6 +18,7 @@ const { hämtaLarm, nästaLarmId, sattLarmId } = require("../store/mustering");
 const { routing } = require("../store/config");
 const { presentEvent } = require("../present/presentEvent");
 const { slugify } = require("../util/slug");
+const { girKort, SCENARIOMALL } = require("../cards/render");
 
 const OPPNA = new Set(["forlarm", "aktivt"]);
 
@@ -103,6 +104,19 @@ app.http("larm-handelse", {
       return { status: 200, jsonBody: { larmId, hoppadeOver: `ingen routing för ${site}` } };
     }
 
+    // Scenarier utan Teams-kort. `fara` kommer från kameraanalysen och hör
+    // hemma på tavlan och på skärmarna — inte som ett BRANDLARM i allas chatt.
+    // Vi skickar ALDRIG brandlarmskortet för fara.
+    if (!girKort(rad.scenario)) {
+      context.log(`larm-handelse ${larmId}: scenario "${rad.scenario}" ger inga kort `
+        + `(${gammal ?? "(ny)"} -> ${rad.status}), raden ligger på tavlan`);
+      return {
+        status: 200,
+        jsonBody: { larmId, overgang: `${gammal ?? "(ny)"} -> ${rad.status}`,
+          hoppadeOver: `scenario ${rad.scenario} ger inga kort` },
+      };
+    }
+
     const event = {
       correlationId: cid,
       tenant: "COID",
@@ -120,7 +134,14 @@ app.http("larm-handelse", {
       // väljMall kan inte veta skillnaden mellan ett avfärdat förlarm och ett
       // nytt. En övning renderas som övning, men bara när det är ett larm —
       // ett avfärdat förlarm ska visa förlarmkortet även i övningsläge.
-      mall: rad.test === true && steg.mall === "larm" ? "ovning" : steg.mall,
+      // Är det ett larm avgör scenariot vilket kort: en inrymning säger
+      // stanna inne och lås, ett brandlarm säger gå ut. Övningsflaggan
+      // gäller bara larmläget, aldrig förlarm eller Händelsen över.
+      mall: steg.mall !== "larm"
+        ? steg.mall
+        : rad.test === true
+          ? "ovning"
+          : (SCENARIOMALL[String(rad.scenario ?? "").toLowerCase()] ?? "aktivt"),
       test: rad.test === true,
       occurredAt: rad.utlost_at,
       larmId,

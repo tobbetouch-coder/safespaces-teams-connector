@@ -46,13 +46,27 @@ const VARIANTER = {
     scenario: "brand", severity: "active", test: true,
     instruktion: "Detta är en övning. Följ ordinarie utrymningsrutin.",
   },
+  // M2. Börjar som förlarm, precis som i verkligheten: kameran flaggar, en
+  // människa bedömer, och först Bekräfta utlöser inrymningen.
+  inrymning: {
+    scenario: "inrymning", severity: "prealarm", test: false,
+    kalla: "api",
+  },
+  // Kameraanalysens egen flagga. Syns på tavlan och på skärmarna, men ger
+  // inget Teams-kort — se render.js UTAN_KORT.
+  fara: {
+    scenario: "fara", severity: "active", test: false,
+    kalla: "api",
+  },
 };
 
 const INFOKOMMANDON = ["status"];
 
 const HJÄLPTEXT =
   "Använd ett kommando i taget: `simulera brandlarm` · `forlarm` · `trigger` · "
-  + "`ovning` · `clear` · `status`.\n\n"
+  + "`ovning` · `inrymning` · `fara` · `clear` · `status`.\n\n"
+  + "`inrymning` ger ett förlarm som **Bekräfta** eskalerar till "
+  + "inrymningskortet. `fara` syns på tavlan men ger inga Teams-kort.\n\n"
   + "Ett aktivt larm per zon: ett nytt trigger uppdaterar det pågående larmet, "
   + "det skapar inget andra. Blås av med `simulera clear`.";
 
@@ -249,7 +263,9 @@ class SafeSpacesBot extends TeamsActivityHandler {
       site: SITE,
       zone: zonNyckel,
       occurredAt: öppet?.utlost_at ?? new Date().toISOString(),
-      kalla: process.env.DEMO_KALLA ?? rutt?.kalla ?? "Brandlarmcentral",
+      // Variantens egen källa vinner: inrymning och fara kommer från
+      // kameraanalysen (`api`), inte från brandlarmcentralen.
+      kalla: v.kalla ?? process.env.DEMO_KALLA ?? rutt?.kalla ?? "Brandlarmcentral",
     });
     await context.sendActivity(
       `${öppet ? "Uppdaterade" : "Simulerade"} ${kommando} — larm ${res.larmId}`

@@ -9,6 +9,39 @@ const MUSTERING_URL = process.env.MUSTERING_URL ?? "https://tower.co-ideation.co
 const ZON_URL = process.env.ZON_URL ?? "https://tower.co-ideation.com/safespaces/min-zon";
 
 /**
+ * Texterna som skiljer sig åt mellan scenarier.
+ *
+ * Räddningstjänstens ord är "händelsen över", inte "faran över" — faran kan
+ * mycket väl finnas kvar, det är händelsen som är avslutad.
+ */
+function scenariotexter(scenario, zon) {
+  const s = String(scenario ?? "").trim().toLowerCase();
+
+  if (s === "inrymning") {
+    return {
+      avblastRubrik: "Du kan lämna skyddet",
+      avblastText: "Du kan lämna skyddet. Hotet är avblåst. Följ personalens anvisningar.",
+      forlarmText: `Kameran har flaggat en möjlig händelse vid ${zon}. `
+        + "Bekräfta för att utlösa inrymning, eller avfärda om det är ofarligt.",
+    };
+  }
+
+  return {
+    avblastRubrik: "Du kan återgå till byggnaden",
+    avblastText: "Tack för att du svarade snabbt. Frågor om händelsen tar du med din säkerhetsansvarige.",
+    forlarmText: "En analyskälla har flaggat en möjlig händelse i zonen. "
+      + "Bekräfta för att utlösa larm, eller avfärda om det är ofarligt.",
+  };
+}
+
+/** KAMERA_LOBBY, KAMERA_OFFICES_2F … Bindestreck blir understreck. */
+function kameraUrl(zonNyckel) {
+  const nyckel = String(zonNyckel ?? "").trim().toUpperCase().replace(/[^A-Z0-9]+/g, "_");
+  if (!nyckel) return "";
+  return (process.env[`KAMERA_${nyckel}`] ?? "").trim();
+}
+
+/**
  * @param {object} event eventet från bridgen eller simulatorn
  * @param {object|null} rutt routingraden för siten: byggnad, zonEtikett, uppsamlingsplats
  * @param {object|null} larm larmraden ur Supabase, för larm_id och utlösningstid
@@ -34,6 +67,12 @@ function byggData(event, rutt, larm) {
     // Förlarmkortets sista rad. "Väntar på bedömning" tills någon tryckt,
     // sedan "Bekräftat av Maria Ek 14:02", "Avfärdat" eller "Eskalerat".
     forlarmslage: event.forlarmslage ?? "Väntar på bedömning",
+    // Scenarioberoende korttexter. Ett brandlarm och en inrymning är motsatta
+    // instruktioner — det ena säger gå ut, det andra stanna inne och lås.
+    ...scenariotexter(event.scenario, event.zonEtikett ?? rutt?.zonEtikett ?? event.zone ?? ""),
+    // Kameralänk per zon, ur app settings: KAMERA_LOBBY, KAMERA_OFFICES_2F.
+    // Samma mönster som tavlans VITE_KAMERA_<ZON>. Saknas den visas ingen knapp.
+    kameraUrl: kameraUrl(event.zone ?? rutt?.zonNyckel),
     // Faran över: "14:02–14:19 (17 min)" och vem som avblåste.
     larmintervall: `${klocka(start)}–${klocka(nu)} (${varaktighet(start, nu)})`,
     avblastAv: event.rollSomAgerade ?? larm?.avblast_av ?? "",

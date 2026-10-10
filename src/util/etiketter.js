@@ -10,6 +10,9 @@ const SCENARIER = {
   inrymning: "Inrymning",
   utrymning: "Utrymning",
   annat: "Annat",
+  // Kameraanalysens flagga. Rod som ett aktivt larm pa tavlan, men den ger
+  // aldrig nagot Teams-kort — se cards/render.js UTAN_KORT.
+  fara: "Fara",
 };
 
 function storForsta(text) {

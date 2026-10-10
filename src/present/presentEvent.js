@@ -8,7 +8,7 @@ const { routing, rollerSomFår, personerIRoller, allaPersoner } = require("../st
 const { getByAad, getByChannel } = require("../store/refs");
 const { hämtaFörKorrelation, spara, sparaEvent } = require("../store/cards");
 const { läge, säkraLarm, avblåsLarm, hämtaLarm, mittSvar } = require("../store/mustering");
-const { rendera, väljMall, lägeskort } = require("../cards/render");
+const { rendera, väljMall, girKort, lägeskort } = require("../cards/render");
 const { byggData, klocka } = require("./data");
 const { medBackoff } = require("../util/retry");
 const { taNyckel, slappNyckel } = require("../store/idempotens");
@@ -21,7 +21,7 @@ const STATUS_FOR_MALL = {
 };
 
 const COID = process.env.MicrosoftAppTenantId;
-const EVAKUERINGSLÄGEN = ["larm", "aktivt", "ovning"];
+const EVAKUERINGSLÄGEN = ["larm", "aktivt", "ovning", "inrymning"];
 const SVARSETIKETT = { safe: "I säkerhet", help: "Behöver hjälp" };
 
 async function presentEvent(event) {
@@ -86,10 +86,21 @@ async function presentEvent(event) {
   const karta = new Map(tidigare.map((r) => [r.rowKey, r]));
   const resultat = { mall: mallNamn, larmId: data.larmId, nya: 0, uppdaterade: 0, mottagare: [] };
 
+  // Scenarier som inte ska ge något kort alls. Raden är redan skriven, så
+  // tavlan och skärmarna får sitt — men ingen chatt får ett larmkort.
+  // `fara` är kameraanalysens flagga: ett BRANDLARM i allas chatt för något
+  // som kanske är en kvarglömd väska lär folk att ignorera korten.
+  if (!girKort(event.scenario)) {
+    console.log(`presentEvent ${data.larmId} scenario=${event.scenario}: inga kort, bara raden`);
+    await slappNyckel(event.correlationId, lasstatus);
+    return { ...resultat, ignorerat: true, skäl: "scenario utan kort" };
+  }
+
   if (EVAKUERINGSLÄGEN.includes(mallNamn)) {
     // Alla i zonen får musteringskortet. Ingen rollgrind — även medarbetare ska kunna svara.
     const personer = await allaPersoner();
-    const mall = mallNamn === "ovning" ? "ovning" : "larm-mottagare";
+    // Ovning och inrymning har egna mottagarkort; brandlarm far larm-mottagare.
+    const mall = { ovning: "ovning", inrymning: "inrymning" }[mallNamn] ?? "larm-mottagare";
     for (const p of personer) {
       const ref = await getByAad(p.aadObjectId);
       if (!ref) { console.warn(`presentEvent: ingen referens för ${p.aadObjectId}`); continue; }

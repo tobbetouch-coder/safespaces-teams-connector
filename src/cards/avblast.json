@@ -3,8 +3,8 @@
   "type": "AdaptiveCard", "version": "1.5",
   "body": [
     { "type": "Container", "style": "good", "bleed": true, "items": [
-      { "type": "TextBlock", "text": "✅ FARAN ÖVER", "weight": "Bolder", "size": "Large", "color": "Good", "wrap": true },
-      { "type": "TextBlock", "text": "Du kan återgå till byggnaden", "weight": "Bolder", "wrap": true, "spacing": "None" }
+      { "type": "TextBlock", "text": "✅ HÄNDELSEN ÖVER", "weight": "Bolder", "size": "Large", "color": "Good", "wrap": true },
+      { "type": "TextBlock", "text": "{{avblastRubrik}}", "weight": "Bolder", "wrap": true, "spacing": "None" }
     ]},
     { "type": "FactSet", "facts": [
       { "title": "Byggnad", "value": "{{byggnad}}" },
@@ -12,7 +12,7 @@
       { "title": "Avblåst av", "value": "{{avblastAv}}" },
       { "title": "Ditt svar", "value": "{{dittSvar}}" }
     ]},
-    { "type": "TextBlock", "text": "Tack för att du svarade snabbt. Frågor om utrymningen tar du med din säkerhetsansvarige.", "wrap": true },
+    { "type": "TextBlock", "text": "{{avblastText}}", "wrap": true },
     { "type": "TextBlock", "text": "Larm {{larmId}} · Avslutat", "size": "Small", "isSubtle": true, "wrap": true }
   ]
 }

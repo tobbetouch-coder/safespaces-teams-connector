@@ -1,0 +1,22 @@
+{
+  "$schema": "http://adaptivecards.io/schemas/adaptive-card.json",
+  "type": "AdaptiveCard", "version": "1.5",
+  "body": [
+    { "type": "Container", "style": "attention", "bleed": true, "items": [
+      { "type": "TextBlock", "text": "🔒 INRYMNING", "weight": "Bolder", "size": "Large", "color": "Attention", "wrap": true },
+      { "type": "TextBlock", "text": "Sök skydd nu, gå inte ut", "weight": "Bolder", "wrap": true, "spacing": "None" }
+    ]},
+    { "type": "FactSet", "facts": [
+      { "title": "Byggnad", "value": "{{byggnad}}" },
+      { "title": "Zon", "value": "{{zon}}" },
+      { "title": "Tid", "value": "{{klockslag}}" },
+      { "title": "Källa", "value": "{{kalla}}" }
+    ]},
+    { "type": "TextBlock", "text": "Gå INTE ut. Ta dig till närmaste låsbara rum. Lås och barrikadera dörren. Släck ljuset, sätt telefonen på ljudlös, håll dig undan fönster och var tyst. Ring 112 när du är i säkerhet.", "wrap": true },
+    { "type": "TextBlock", "text": "Larm {{larmId}} · Skickat till alla i {{byggnad}}", "size": "Small", "isSubtle": true, "wrap": true }
+  ],
+  "actions": [
+    { "type": "Action.Execute", "title": "Jag är i säkerhet", "style": "positive", "verb": "muster.safe", "data": { "correlationId": "{{correlationId}}", "zone": "{{zonNyckel}}", "site": "{{site}}", "action": "muster.safe" } },
+    { "type": "Action.Execute", "title": "Jag behöver hjälp", "style": "destructive", "verb": "muster.help", "data": { "correlationId": "{{correlationId}}", "zone": "{{zonNyckel}}", "site": "{{site}}", "action": "muster.help" } }
+  ]
+}

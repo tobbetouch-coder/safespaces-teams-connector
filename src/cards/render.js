@@ -7,7 +7,16 @@ const path = require("node:path");
 const { klocka } = require("../util/tid");
 
 const MALLAR = ["larm", "aktivt", "forlarm", "avblast", "ovning", "valkomst", "placeholder",
-  "larm-mottagare", "svar-sakerhet", "svar-hjalp", "lageskort"];
+  "larm-mottagare", "inrymning", "svar-sakerhet", "svar-hjalp", "lageskort"];
+
+// Scenarier som inte ska ge något Teams-kort alls. `fara` är kameraanalysens
+// egen flagga: den hör hemma på tavlan och på skärmarna, men ett BRANDLARM i
+// allas chatt för något som kanske är en kvarglömd väska lär folk att ignorera
+// korten. Kontraktet avsnitt 2.
+const UTAN_KORT = new Set(["fara"]);
+
+// Scenarier med egen mall i aktivt läge. Resten får "aktivt" (brandlarm).
+const SCENARIOMALL = { inrymning: "inrymning" };
 const cache = new Map();
 
 function mall(namn) {
@@ -17,7 +26,7 @@ function mall(namn) {
 }
 
 // Behålls för statuskorten och bakåtkompatibilitet; korttexten bor numera i mallarna.
-const RUBRIKBAND = { larm: "BRANDLARM", aktivt: "BRANDLARM", "larm-mottagare": "BRANDLARM", forlarm: "FÖRLARM", avblast: "FARAN ÖVER", ovning: "ÖVNING", lageskort: "UTRYMNING PÅGÅR" };
+const RUBRIKBAND = { larm: "BRANDLARM", aktivt: "BRANDLARM", "larm-mottagare": "BRANDLARM", inrymning: "INRYMNING", forlarm: "FÖRLARM", avblast: "HÄNDELSEN ÖVER", ovning: "ÖVNING", lageskort: "UTRYMNING PÅGÅR" };
 
 const KNAPP = {
   confirm: { titel: "Bekräfta", stil: "positive" },
@@ -25,15 +34,33 @@ const KNAPP = {
   standdown: { titel: "Avblås", stil: "destructive" },
 };
 
-/** Vilken mall ett event ska renderas med. test:true vinner alltid, så övning aldrig misstas för skarpt. */
+/** Ska scenariot ge ett Teams-kort alls? */
+function girKort(scenario) {
+  return !UTAN_KORT.has(String(scenario ?? "").trim().toLowerCase());
+}
+
+/**
+ * Vilken mall ett event ska renderas med.
+ *
+ * Läget avgörs först — avblåsning, förlarm eller aktivt — och sedan scenariot.
+ * En inrymning och ett brandlarm är samma läge men motsatta instruktioner:
+ * det ena säger gå ut, det andra säger stanna inne och lås dörren. Att skicka
+ * fel kort är inte ett skönhetsfel.
+ *
+ * `test` gäller bara det AKTIVA läget. Tidigare vann det alltid, vilket gjorde
+ * att en övnings avblåsning renderade övningskortet i stället för
+ * Händelsen över. Webhooken kringgick det genom att skicka mallen uttryckligen.
+ */
 function väljMall(event) {
-  if (event.test === true || event.test === "true") return "ovning";
   const s = String(event.scenario ?? "").toLowerCase();
   const sev = String(event.severity ?? "").toLowerCase();
+
   if (sev === "cleared" || s.includes("clear") || s.includes("avblås")) return "avblast";
   if (sev === "prealarm" || s.includes("förlarm") || s.includes("prealarm")) return "forlarm";
-  if (sev === "active") return "aktivt";
-  return "larm";
+
+  if (event.test === true || event.test === "true") return "ovning";
+  if (SCENARIOMALL[s]) return SCENARIOMALL[s];
+  return sev === "active" ? "aktivt" : "larm";
 }
 
 function fyll(nod, data) {
@@ -80,6 +107,16 @@ function rendera(mallNamn, data, tillåtnaActions = []) {
       verb: action,
       data: { correlationId: data.correlationId, zone: data.zonNyckel ?? data.zon, site: data.site, action },
     }));
+  }
+
+  // Visa kamera på förlarmkortet. Den som ska bedöma om något är skarpt behöver
+  // se bilden, inte gissa. Knappen finns bara när zonen har en URL satt — en
+  // knapp som leder ingenstans är värre än ingen knapp.
+  if (mallNamn === "forlarm" && String(data.kameraUrl ?? "").trim()) {
+    kort.actions = [
+      ...(kort.actions ?? []),
+      { type: "Action.OpenUrl", title: "📹 Visa kamera", url: data.kameraUrl },
+    ];
   }
   return kort;
 }
@@ -147,4 +184,4 @@ function lägeskort(data, musteringUrl, hjälp = []) {
   return kort;
 }
 
-module.exports = { rendera, väljMall, statuskort, lägeskort, procent, RUBRIKBAND, MALLAR };
+module.exports = { rendera, väljMall, girKort, statuskort, lägeskort, procent, RUBRIKBAND, MALLAR, SCENARIOMALL };
