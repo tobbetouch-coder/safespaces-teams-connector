@@ -2,7 +2,7 @@
 // presentEvent, lägeskortet och knapphanteraren så att samma larm alltid visar
 // samma ord — och samma ord som Cloud-skivan läser ur alarms-raden.
 const { klocka, datum, varaktighet } = require("../util/tid");
-const { scenarioEtikett } = require("../util/etiketter");
+const { scenarioEtikett, kallaEtikett } = require("../util/etiketter");
 
 const KARTA_URL = process.env.UTRYMNINGSKARTA_URL ?? "https://tower.co-ideation.com/safespaces/utrymningskarta";
 const MUSTERING_URL = process.env.MUSTERING_URL ?? "https://tower.co-ideation.com/safespaces/mustering";
@@ -48,6 +48,10 @@ function kameraUrl(zonNyckel) {
  */
 function byggData(event, rutt, larm) {
   const nu = new Date().toISOString();
+  // Scenariot kan saknas i eventet: avblasningen skickar det med flit inte,
+  // for att inte skriva om vad larmet handlade om. Da tas det ur RADEN, annars
+  // fick Handelsen over utrymningstexten aven efter en inrymning.
+  const scenario = event.scenario ?? larm?.scenario ?? "";
   const start = larm?.utlost_at ?? event.occurredAt ?? nu;
   return {
     correlationId: event.correlationId,
@@ -57,12 +61,12 @@ function byggData(event, rutt, larm) {
     plats: event.byggnad ?? rutt?.byggnad ?? event.plats ?? event.site ?? "",
     zon: event.zonEtikett ?? rutt?.zonEtikett ?? event.zone ?? "",
     zonNyckel: event.zone ?? rutt?.zonNyckel ?? "",
-    kalla: event.kalla ?? rutt?.kalla ?? "",
+    kalla: kallaEtikett(event.kalla ?? larm?.kalla ?? rutt?.kalla ?? ""),
     uppsamlingsplats: event.uppsamlingsplats ?? rutt?.uppsamlingsplats ?? "",
     // Kontraktet avsnitt 2 skickar scenario i gemener (brand, inrymning,
     // utrymning, annat). Versaliseringen hör i visningslagret, aldrig i datan —
     // samma regel som tavlans etiketter.ts.
-    scenario: scenarioEtikett(event.scenario),
+    scenario: scenarioEtikett(scenario),
     klockslag: klocka(start),
     // Förlarmkortets sista rad. "Väntar på bedömning" tills någon tryckt,
     // sedan "Bekräftat av Maria Ek 14:02", "Avfärdat" eller "Eskalerat".
@@ -72,7 +76,7 @@ function byggData(event, rutt, larm) {
     bekraftelse: event.bekraftelse ?? "",
     // Scenarioberoende korttexter. Ett brandlarm och en inrymning är motsatta
     // instruktioner — det ena säger gå ut, det andra stanna inne och lås.
-    ...scenariotexter(event.scenario, event.zonEtikett ?? rutt?.zonEtikett ?? event.zone ?? ""),
+    ...scenariotexter(scenario, event.zonEtikett ?? rutt?.zonEtikett ?? event.zone ?? ""),
     // Kameralänk per zon, ur app settings: KAMERA_LOBBY, KAMERA_OFFICES_2F.
     // Samma mönster som tavlans VITE_KAMERA_<ZON>. Saknas den visas ingen knapp.
     kameraUrl: kameraUrl(event.zone ?? rutt?.zonNyckel),
