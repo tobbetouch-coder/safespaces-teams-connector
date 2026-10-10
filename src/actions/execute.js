@@ -157,6 +157,12 @@ async function hanteraExecute(context) {
       // genom eskaleringen.
       instruktion: "Lämna byggnaden via närmaste utrymningsväg och gå till uppsamlingsplatsen.",
       avsandare: "knapp:confirm",
+      // Bekräftelseraden följer med i UTSKICKET också, inte bara i svaret till
+      // den som tryckte. Då blir de två skrivningarna identiska och ordningen
+      // mellan dem slutar spela roll — raden försvann annars när utskicket
+      // råkade landa sist. Att alla ser vem som bedömde förlarmet är dessutom
+      // vettigt i sig: det säger att en människa tittat på det.
+      bekraftelse: ` · Bekräftat av ${vem} ${klocka(new Date().toISOString())}`,
     };
     await presentEvent(larmevent)
       .catch((e) => console.error("eskaleringens kort gick inte ut", e.message));
@@ -174,10 +180,9 @@ async function hanteraExecute(context) {
     // försvinner, aldrig larmet.
     const larmmall = väljMall(larmevent);
     const mottagarmall = { ovning: "ovning", inrymning: "inrymning" }[larmmall] ?? "larm-mottagare";
-    return kortsvar(rendera(mottagarmall, {
-      ...byggData(larmevent, sam?.rutt ?? null, { larm_id: eskalerat.larm_id, utlost_at: eskalerat.utlost_at }),
-      bekraftelse: ` · Bekräftat av ${vem} ${klocka(new Date().toISOString())}`,
-    }, []));
+    return kortsvar(rendera(mottagarmall,
+      byggData(larmevent, sam?.rutt ?? null, { larm_id: eskalerat.larm_id, utlost_at: eskalerat.utlost_at }),
+      []));
   }
 
   // --- Avfärda: förlarmet var ofarligt. Avblåst, men INGET faran över. ---
