@@ -10,6 +10,10 @@ const { inspelade } = require("../bridge/stub");
 const { uppdateraLägeskort } = require("../present/mustering");
 const { läge, aktivtLarm } = require("../store/mustering");
 const { byggData } = require("../present/data");
+const { hämtaVakt, sättVakt } = require("../store/vakt");
+const {
+  tolkaVakt, formateraVakt, FÄLT: VAKT_FÄLT, HJÄLP: VAKT_HJÄLP, GENOMSLAG: VAKT_GENOMSLAG,
+} = require("./vaktkommando");
 
 // Demo-kund Noname. Måste matcha SITE/zonNyckel i scripts/seed.js, annars
 // hittar routing-uppslaget ingen rad.
@@ -68,7 +72,9 @@ const HJÄLPTEXT =
   + "`inrymning` ger ett förlarm som **Bekräfta** eskalerar till "
   + "inrymningskortet. `fara` syns på tavlan men ger inga Teams-kort.\n\n"
   + "Ett aktivt larm per zon: ett nytt trigger uppdaterar det pågående larmet, "
-  + "det skapar inget andra. Blås av med `simulera clear`.";
+  + "det skapar inget andra. Blås av med `simulera clear`.\n\n"
+  + "`vakt` visar vilka källor som får larma, `vakt kamera på|av` och "
+  + "`vakt knappar på|av` ändrar det.";
 
 /**
  * Tolkar "simulera …". Två regler, och de är medvetet osymmetriska:
@@ -97,6 +103,7 @@ class SafeSpacesBot extends TeamsActivityHandler {
       const text = (context.activity.text ?? "").trim().toLowerCase().replace(/<[^>]+>/g, "").trim();
 
       if (text.startsWith("simulera")) await this.simulera(context, text);
+      else if (text.startsWith("vakt")) await this.vakt(context, text);
       else if (text === "larmtest") await this.larmtest(context);
       else if (text === "läge" || text === "lage") {
         // Samma sak här: larmet hämtas ur zonen, inte ur processens minne.
@@ -192,6 +199,47 @@ class SafeSpacesBot extends TeamsActivityHandler {
    * stället för de larm som faktiskt stod röda. Databasen är det enda minne som
    * överlever en recykling.
    */
+  /**
+   * `vakt` — vilka källor som får larma på platsen.
+   *
+   * Teams skriver inte till Pi:n. Raden ändras i `site_settings`, bryggans
+   * nedlänk ser den inom ett pollvarv och publicerar `sys/vakt` retainat, och
+   * Axis-adaptern lyder meddelandet. Därför står det "inom några sekunder" i
+   * svaret och inte "klart" — vägen är kort men den är inte omedelbar.
+   */
+  async vakt(context, text) {
+    const kommando = tolkaVakt(text);
+    if (!kommando) { await context.sendActivity(VAKT_HJÄLP); return; }
+
+    const { rutt } = await this.riggen();
+    const plats = rutt?.byggnad || SITE;
+
+    try {
+      if (kommando.visa) {
+        const rad = await hämtaVakt(SITE, rutt?.byggnad);
+        await context.sendActivity(
+          `**Vaktläge ${plats}:** ${formateraVakt(rad)}`
+          + (rad.fannsRad ? "" : "\n\nIngen rad i `site_settings` — standardläget gäller."),
+        );
+        return;
+      }
+
+      const fält = VAKT_FÄLT[kommando.fält];
+      const rad = await sättVakt(SITE, fält.kolumn, kommando.värde);
+      await context.sendActivity(
+        `**${fält.etikett} ${kommando.värde ? "PÅ" : "AV"}** för ${plats}.\n\n`
+        + `Vaktläge: ${formateraVakt(rad)}\n\n${VAKT_GENOMSLAG}`,
+      );
+    } catch (fel) {
+      // Ett vaktkommando som faller får aldrig se ut som att det gick igenom.
+      // Den som tror att kameran är avslagen men inte är det fattar fel beslut.
+      await context.sendActivity(
+        `Kunde inte läsa eller ändra vaktläget: ${fel.message}\n\n`
+        + "Läget är **oförändrat**. Är migrationen `site_settings` körd?",
+      );
+    }
+  }
+
   async simulera(context, text) {
     const kommando = tolka(text);
     if (!kommando) { await context.sendActivity(HJÄLPTEXT); return; }
@@ -204,8 +252,17 @@ class SafeSpacesBot extends TeamsActivityHandler {
         : `ingen routingrad för \`${SITE}\` — kör scripts/seed.js`;
       const rader = öppet ? await inspelade(öppet.correlation_id) : [];
       const l = öppet ? await läge(öppet.correlation_id, (await allaPersoner()).length) : null;
+      // Vaktläget hör till riggen: en demo som inte ger förlarm beror oftare
+      // på att kameran är avslagen än på att något är trasigt.
+      let vaktrad;
+      try {
+        vaktrad = formateraVakt(await hämtaVakt(SITE, rutt?.byggnad));
+      } catch (fel) {
+        vaktrad = `kunde inte läsas (${fel.message})`;
+      }
       await context.sendActivity(
         `**Rigg:** ${plats}\n\n`
+        + `**Vaktläge:** ${vaktrad}\n\n`
         + (öppet
           ? `**Öppet larm:** ${öppet.larm_id} · ${öppet.status} · ${öppet.scenario}`
             + ` · utlöst ${öppet.utlost_at}\n\n`

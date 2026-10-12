@@ -16,7 +16,7 @@ const UT = path.join(ROT, "deploy-flex.zip");
 
 // Gäller bara i roten: en katalog som heter scripts djupt inne i node_modules
 // ska följa med.
-const UTE_KATALOG = new Set([".git", ".vscode", "__pycache__", "scripts", "supabase"]);
+const UTE_KATALOG = new Set([".git", ".vscode", "__pycache__", "scripts", "supabase", "test"]);
 const UTE_FIL = new Set([
   "local.settings.json", "local.settings.json.exempel",
   "deploy.zip", "deploy-flex.zip", "README.md", ".gitignore", ".funcignore",

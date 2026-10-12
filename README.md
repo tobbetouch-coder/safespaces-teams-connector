@@ -57,3 +57,40 @@ curl -H "x-functions-key: $MASTER" \
 Listan ska innehålla `health-supabase` och `messages`. Är den tom laddade inte
 värden koden. `GET /api/health/supabase?code=$KEY` ska svara
 `{"supabase":"nåbar","ok":true,...}`.
+
+## Kommandot `vakt`
+
+Vilka källor som får larma på platsen. Teams skriver **inte** till Pi:n: raden
+ändras i `site_settings` i safespaces-demo, bryggans nedlänk ser den inom ett
+pollvarv och publicerar `safespaces/<site>/sys/vakt` retainat, och
+Axis-adaptern lyder meddelandet.
+
+| Kommando | Gör |
+|---|---|
+| `vakt` | visar läget: `Kamera: av · Knappar: på · ändrat 21:14` |
+| `vakt kamera på` / `vakt kamera av` | kameraanalysen får ge förlarm, eller inte |
+| `vakt knappar på` / `vakt knappar av` | nödknappen och brandlarmcentralen får larma, eller inte |
+
+`pa` utan ring fungerar — ingen skriver ringar på ett telefontangentbord i en
+monter. Okända eller extra ord ger hjälptext, aldrig en gissning: att av
+misstag slå av knapparna är precis det ett slarvigt skrivet kommando inte ska
+kunna orsaka.
+
+Varje ändring svarar med nya läget och raden *"Slår igenom på Site Connect inom
+några sekunder. Kameran ger högst ett förlarm per 3 minuter och inget medan ett
+larm är öppet."* Faller anropet säger svaret att läget är **oförändrat** — den
+som tror att kameran är avslagen men inte är det fattar fel beslut.
+
+`simulera status` visar vaktläget på en egen rad. En demo som inte ger förlarm
+beror oftare på att kameran är avslagen än på att något är trasigt.
+
+Standardläget, när ingen rad finns: **kameran av, knapparna på.**
+
+## Tester
+
+```
+npm test
+```
+
+Kör `node --test` mot `test/`. Testerna är rena: ingen Teams-tur, ingen
+databas. De följer med i repot men inte i deploypaketet.
