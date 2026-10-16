@@ -21,6 +21,19 @@ const TACK = "Tack. Säkerhetsansvarig ser att du är i säkerhet. Du får ett n
 const kortsvar = (kort) => ({ statusCode: 200, type: "application/vnd.microsoft.card.adaptive", value: kort });
 const textsvar = (text) => ({ statusCode: 200, type: "application/vnd.microsoft.activity.message", value: text });
 
+/**
+ * Scenariot ur en larmrad, eller null om det saknas.
+ *
+ * Egen funktion för att den ska gå att prova: regeln är att Bekräfta aldrig
+ * gissar. Kameran skriver `inrymning`, en knapp skriver `brand`, och det som
+ * står i raden är det som ska ut. Tom sträng och whitespace räknas som att
+ * det saknas.
+ */
+function scenarioFrån(larmrad) {
+  const s = String(larmrad?.scenario ?? "").trim();
+  return s === "" ? null : s;
+}
+
 /** Eventet, routingen och larmraden bakom ett correlationId — allt korten behöver. */
 async function sammanhang(correlationId) {
   const event = await hämtaEvent(correlationId);
@@ -135,6 +148,21 @@ async function hanteraExecute(context) {
       return kortsvar(statuskort("Redan bekräftat", "Larmet hann bli aktivt under tiden.", d));
     }
 
+    // Scenariot tas alltid ur förlarmet. Saknas det säger kortet ifrån i
+    // stället för att gissa: en default till brand hade skickat ut en
+    // utrymning för något som kanske var en inrymning, och då springer folk
+    // ut genom den dörr de skulle ha låst.
+    if (!scenarioFrån(eskalerat)) {
+      console.warn(`confirm: larm ${correlationId} saknar scenario, eskalerar inte`);
+      return kortsvar(statuskort(
+        "Scenariot saknas",
+        "Förlarmet har inget scenario, och då går det inte att veta vilket "
+        + "larm som ska gå ut. Inget skickades. Avfärda förlarmet och utlös "
+        + "larmet manuellt i stället.",
+        d,
+      ));
+    }
+
     // Samma eskalering som "simulera brandlarm": larmkorten går ut till alla i
     // zonen. Webhooken gör samma sak när triggern är på plats; kortlåset
     // avgör vem som faktiskt skickar.
@@ -148,7 +176,7 @@ async function hanteraExecute(context) {
       zonEtikett: eskalerat.zon,
       uppsamlingsplats: eskalerat.uppsamlingsplats,
       kalla: eskalerat.kalla,
-      scenario: eskalerat.scenario,
+      scenario: scenarioFrån(eskalerat),
       severity: "active",
       test: eskalerat.test === true,
       occurredAt: eskalerat.utlost_at,
@@ -259,4 +287,4 @@ async function testlarm(context, aad) {
   }
 }
 
-module.exports = { hanteraExecute, kortsvar, textsvar };
+module.exports = { hanteraExecute, kortsvar, textsvar, scenarioFrån };

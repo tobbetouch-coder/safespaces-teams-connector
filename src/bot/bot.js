@@ -37,8 +37,17 @@ const VARIANTER = {
     ingress: "Lämna byggnaden nu.",
     instruktion: "Utrym via närmaste utrymningsväg och gå till återsamlingsplatsen. Svara nedan när du är i säkerhet.",
   },
+  // Ett förlarm kommer från kameraanalysen, och kameran flaggar inrymning —
+  // aldrig brand. Stod det `brand` här, och det gjorde det till 16 oktober,
+  // eskalerade Bekräfta troget till ett BRANDLARM: fel kort, fel bild på
+  // skärmarna och fel instruktion till folk. Kameravägen gjorde rätt hela
+  // tiden; det var simuleringen som skapade fel förlarm.
+  //
+  // `simulera forlarm` och `simulera inrymning` är därmed samma sak, och
+  // det är avsiktligt: i verkligheten finns bara en sorts förlarm.
   forlarm: {
-    scenario: "brand", severity: "prealarm", test: false,
+    scenario: "inrymning", severity: "prealarm", test: false,
+    kalla: "api",
     instruktion: "Kamerazonen har gett förlarm. Bekräfta om det är skarpt, avfärda om det är falsklarm.",
   },
   trigger: {
