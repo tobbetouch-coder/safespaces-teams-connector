@@ -238,9 +238,73 @@ async function hanteraExecute(context) {
     }, []));
   }
 
+  // --- Avblås: larmet är över. Samma väg som `simulera clear`. ---
+  //
+  // Knappen fanns på lägeskortet från början, men ingen gren hanterade den:
+  // trycket föll igenom till standardsvaret nedan, som sa "Avblåsning
+  // skickad — inväntar bekräftelse från anläggningen". Ingenting skickades.
+  // Larmet stod kvar rött tills någon körde `simulera clear`, och kortet
+  // påstod hela tiden att något var på väg. Mätt 16 oktober: sex minuter.
+  //
+  // presentEvent gör allt arbetet och är samma anrop som simulatorn använder:
+  // kortlåset, PATCH på larmraden (inte en ny rad — clear är slutet på en
+  // incident) och omritning av alla utskickade kort.
+  if (action === "standdown") {
+    const larmnu = await hämtaLarm(correlationId).catch(() => null);
+    if (!larmnu) {
+      return kortsvar(statuskort("Larmet hittades inte",
+        "Det finns ingen larmrad att blåsa av.", d));
+    }
+    if (larmnu.status === "avblast") {
+      return kortsvar(statuskort("Redan avblåst",
+        `${larmnu.larm_id} är redan avblåst. Ingenting gjordes.`, d));
+    }
+    if (larmnu.status === "forlarm") {
+      return kortsvar(statuskort("Går inte att blåsa av",
+        `${larmnu.larm_id} är ett förlarm — det avfärdas, inte avblåses.`, d));
+    }
+
+    const sam = await sammanhang(correlationId);
+    // scenario skickas INTE med: avblåsningen ska inte skriva om vad larmet
+    // handlade om. Kortet säger HÄNDELSEN ÖVER, raden behåller sitt scenario.
+    const res = await presentEvent({
+      correlationId,
+      tenant: "COID",
+      site: sam?.event?.site ?? site,
+      zone: sam?.event?.zone ?? zone,
+      severity: "cleared",
+      test: false,
+      kalla: larmnu.kalla ?? sam?.event?.kalla,
+      occurredAt: new Date().toISOString(),
+      avsandare: "knapp:standdown",
+      // Hamnar i avblast_av på raden, så tavlan kan visa vem som blåste av.
+      rollSomAgerade: vem,
+    });
+    console.log(`standdown ${correlationId} av ${vem}:`
+      + ` ${res?.uppdaterade ?? 0} kort uppdaterade, ${res?.nya ?? 0} nya`
+      + (res?.ignorerat ? ` (ignorerat: ${res.skäl})` : ""));
+
+    // Mallen har ett eget fält för det här: avblastAv. Skickar man i stället
+    // forlarmslage faller raden bort tyst, och kortet säger inte vem som
+    // blåste av — vilket är just det man vill se efteråt.
+    const efter = await sammanhang(correlationId);
+    return kortsvar(rendera("avblast", {
+      ...(efter?.data ?? { correlationId }),
+      avblastAv: `${vem} ${klocka(new Date().toISOString())}`,
+    }, []));
+  }
+
+  // Okänd åtgärd. Den gamla texten sa "<åtgärd> skickad — inväntar
+  // bekräftelse från anläggningen", vilket var osant för allt som inte hade
+  // en gren: ingenting skickades någonsin. Ett kort som påstår att något är
+  // på väg är värre än ett som säger att det inte hände, särskilt i ett
+  // larmläge där någon väntar på att det ska ta.
+  console.warn(`okänd åtgärd: ${action}`);
   return kortsvar(statuskort(
-    `${ETIKETT[action] ?? action} skickad`,
-    "Inväntar bekräftelse från anläggningen. Kortet uppdateras när läget ändras.",
+    "Okänd åtgärd",
+    `Knappen "${ETIKETT[action] ?? action}" hanteras inte av connectorn.`
+    + " Ingenting skickades. Använd `simulera clear` i chatten om larmet"
+    + " ska blåsas av.",
     d));
 }
 
