@@ -85,7 +85,7 @@ app.http("larm-handelse", {
     }
 
     // Routing på site-slugen ur byggnaden, enligt KONTRAKT.md avsnitt 1:
-    // "Noname Stockholm" -> "noname-stockholm".
+    // "NoName Stockholm" -> "noname-stockholm".
     // Bryggans rader har inget larm_id. Numret tilldelas FÖRE routingen, och
     // det är med flit: numret identifierar incidenten, och tavlan visar det.
     // Ett larm från en anläggning vi inte har routing för ska synas på tavlan

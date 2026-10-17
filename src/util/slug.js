@@ -6,7 +6,7 @@
 //   gemener · å/ä -> a, ö -> o · allt som inte är a-z0-9 -> bindestreck
 //   inga dubbla eller kantliggande streck
 //
-//   "Noname Stockholm" -> "noname-stockholm"
+//   "NoName Stockholm" -> "noname-stockholm"
 //   "Källaren Öst"     -> "kallaren-ost"
 function slugify(text) {
   if (!text) return "";

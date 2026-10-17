@@ -15,7 +15,7 @@ const {
   tolkaVakt, formateraVakt, FÄLT: VAKT_FÄLT, HJÄLP: VAKT_HJÄLP, GENOMSLAG: VAKT_GENOMSLAG,
 } = require("./vaktkommando");
 
-// Demo-kund Noname. Måste matcha SITE/zonNyckel i scripts/seed.js, annars
+// Demo-kund NoName. Måste matcha SITE/zonNyckel i scripts/seed.js, annars
 // hittar routing-uppslaget ingen rad.
 const SITE = process.env.DEMO_SITE ?? "noname-stockholm";
 const ZON = process.env.DEMO_ZON ?? "lobby";
@@ -23,7 +23,7 @@ const ZON = process.env.DEMO_ZON ?? "lobby";
 // Larmvarianterna. `clear` ligger med men behandlas särskilt i tolka().
 //
 // `scenario` är ett DATAFÄLT med låsta värden ur KONTRAKT.md avsnitt 2:
-// brand · inrymning · utrymning · annat, i gemener. Demo-plats 1 (Noname
+// brand · inrymning · utrymning · annat, i gemener. Demo-plats 1 (NoName
 // Stockholm) är M1 = brand. Site Connect skickar samma ord genom bryggan, så
 // tavlan, Teams och Pi-payloaden säger samma sak om samma larm.
 //

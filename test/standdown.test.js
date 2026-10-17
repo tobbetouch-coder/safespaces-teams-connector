@@ -41,7 +41,7 @@ lägg("store/config.js", {
   // och det enda satt att na fallbacken.
   fårGöra: async (roll, action) => roll === "sakerhetsansvarig"
     && ["confirm", "dismiss", "standdown", "muster.paminn", "framtida.knapp"].includes(action),
-  routing: async () => ({ byggnad: "Noname Stockholm", zonEtikett: "Lobby", zonNyckel: "lobby" }),
+  routing: async () => ({ byggnad: "NoName Stockholm", zonEtikett: "Lobby", zonNyckel: "lobby" }),
   allaPersoner: async () => [],
   personFörAad: async () => ({ namn: "Per Nordbrandt", zon: "Lobby" }),
 });

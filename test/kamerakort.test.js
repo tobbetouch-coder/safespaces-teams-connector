@@ -24,7 +24,7 @@ const KAMERA = "http://192.168.11.9/axis-cgi/mjpg/video.cgi";
 
 function basdata(extra = {}) {
   return {
-    byggnad: "Noname Stockholm",
+    byggnad: "NoName Stockholm",
     zon: "Lobby",
     zonNyckel: "lobby",
     site: "noname-stockholm",

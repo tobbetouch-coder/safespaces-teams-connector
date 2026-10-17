@@ -41,13 +41,13 @@ const MEDLEMMAR = [
 // annars slår boten upp en site som inte finns och kortet går aldrig ut.
 const SITE = process.env.SITE ?? "noname-stockholm";
 
-// Demons kuliss. Demo-kund Noname, beslut 8 okt 2026. Värdena är hämtade ur
-// MQTT-kontraktets avsnitt 5 (plats 1, Noname Stockholm, zon 01 Lobby = Pi 1),
+// Demons kuliss. Demo-kund NoName, beslut 8 okt 2026. Värdena är hämtade ur
+// MQTT-kontraktets avsnitt 5 (plats 1, NoName Stockholm, zon 01 Lobby = Pi 1),
 // så Site Connect, bryggan, tavlan och Teams säger exakt samma ord.
 // Samma ord skrivs på alarms-raden i Supabase. Skolscenariots värden
 // (noname-school / Main Hall, inrymning) kommer med det manuset.
 const PLATS = {
-  byggnad: "Noname Stockholm",
+  byggnad: "NoName Stockholm",
   zonEtikett: "Lobby",
   zonNyckel: process.env.DEMO_ZON ?? "lobby",
   uppsamlingsplats: "Car park · North gate",
@@ -90,7 +90,7 @@ async function kanalFrånRefs() {
   console.log(`  membership: ${MEDLEMMAR.length} personer, ${MEDLEMMAR.filter((m) => m.upn).length} med UPN`);
 
   // Rader som inte står i MEDLEMMAR — handpåsatta testställningar — rättas till
-  // demons zon. Annars blir de kvar på gamla namn: efter bytet till Noname låg
+  // demons zon. Annars blir de kvar på gamla namn: efter bytet till NoName låg
   // en rad kvar på "Plan 2 · Norr" och räknades som en sjätte mottagare i en
   // zon som inte finns. Zonen styr vad musteringsraden skrivs med.
   const kanda = new Set(MEDLEMMAR.map((m) => m.aadObjectId));
